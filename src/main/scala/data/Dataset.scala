@@ -16,7 +16,8 @@ object Dataset extends LazyLogging {
       logger.info(s"$path does not exist. Creating.")
       path.getParent.toFile.mkdirs()
       path.toFile.createNewFile()
-      new URL(url).#>(path.toFile).!!
+      new URL(url).#>(path.toFile).!
+      Thread.sleep(10000)
       logger.info(s"Resource $url was stored in $path")
     } else {
       logger.info(s"Resource $url already exists in $path")
