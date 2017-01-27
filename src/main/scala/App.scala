@@ -12,12 +12,14 @@ import scala.io.StdIn
 
 object App {
 
+  val NUM_TRAINING = 10
+
   def personalRatings(sparkSession: SparkSession, moviesDF: DataFrame, userId: Int): DataFrame = {
     println("Please rate the following movies [0-5]")
 
     val rating = moviesDF
       .select("movieId", "title")
-      .take(2)
+      .take(NUM_TRAINING)
       .map(row => {
         val movieId = row.getString(0).toInt
         val title = row.getString(1)
@@ -51,14 +53,18 @@ object App {
     Dataset.unzip(smallDatasetPath, Paths.get(datasetsDirectory))
 
 
-    val moviesDF = sparkSession().read
+    val spark = sparkSession()
+
+    import spark.implicits._
+
+    val moviesDF = spark.read
       .format("com.databricks.spark.csv")
       .option("header", "true") //reading the headers
       .option("mode", "DROPMALFORMED")
       .load(Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString)
       .select("movieId", "title")
 
-    val ratingsDF = sparkSession().read
+    val ratingsDF = spark.read
       .format("com.databricks.spark.csv")
       .option("header", "true") //reading the headers
       .option("mode", "DROPMALFORMED")
@@ -73,8 +79,7 @@ object App {
       .join(moviesDF, ratingsDF("movieId") === moviesDF("movieId"))
       .drop(ratingsDF("movieId"))
 
-    joinedDF.show()
-
+    /* Obtain ratings for special user */
     val newUserId = ratingsDF
       .withColumn("userId", toInt(joinedDF("userId")))
       .groupBy("userId")
@@ -87,11 +92,7 @@ object App {
       .withColumn("userId", toInt(joinedDF("userId")))
       .withColumn("movieId", toInt(joinedDF("movieId")))
       .withColumn("rating", toDouble(joinedDF("rating")))
-      .filter("rating > 0")
-
-
-    encodedDF.show()
-
+      .cache()
 
     val Array(training, test) = encodedDF.randomSplit(Array(0.6, 0.4))
 
@@ -107,18 +108,35 @@ object App {
     // Evaluate the model by computing the RMSE on the test data
     val predictions = model.transform(test)
 
-    predictions.show()
+    val filteredPredictions = predictions.filter(not(isnan($"prediction"))).cache()
 
-    val topRecommended = predictions.select("title", "prediction").where(s"userId = $newUserId").sort(desc("prediction")).show()
-
-    val evaluator = new RegressionEvaluator()
-      .setMetricName("rmse")
-      .setLabelCol("rating")
-      .setPredictionCol("prediction")
-    val rmse = evaluator.evaluate(predictions)
+    filteredPredictions.createTempView("predictions")
+    personalRatingsDF.createTempView("personal_ratings")
 
     predictions.show()
-    println(s"Root-mean-square error = $rmse")
+
+    val topRecommended = spark.sql(
+      s"SELECT title, prediction " +
+        s"FROM predictions " +
+        s"WHERE userId = $newUserId " +
+        s"AND movieId NOT IN (SELECT movieId FROM personal_ratings) " +
+        s"ORDER BY prediction DESC")
+
+    topRecommended.show()
+
+    topRecommended.write
+      .format("com.databricks.spark.csv")
+      .option("header", "true")
+      .save("recommendations.csv")
+
+//    val evaluator = new RegressionEvaluator()
+//      .setMetricName("rmse")
+//      .setLabelCol("rating")
+//      .setPredictionCol("prediction")
+//    val rmse = evaluator.evaluate(filteredPredictions)
+//
+//    predictions.show()
+//    println(s"Root-mean-square error = $rmse")
 
   }
 }
