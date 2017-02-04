@@ -1,3 +1,5 @@
+package model
+
 import org.apache.spark.sql.SparkSession
 
 object SparkUtil {
