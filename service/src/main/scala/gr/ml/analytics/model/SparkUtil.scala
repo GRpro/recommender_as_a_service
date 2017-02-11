@@ -1,4 +1,4 @@
-package model
+package gr.ml.analytics.model
 
 import org.apache.spark.sql.SparkSession
 

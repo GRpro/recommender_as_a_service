@@ -1,3 +1,5 @@
+package gr.ml.analytics
+
 import model.{Movie, MovieRecommendationModelService}
 
 import scala.io.StdIn
@@ -6,9 +8,9 @@ object App {
 
   def main(args: Array[String]): Unit = {
 
-    import movieRecommendationModelService.ItemRating
+    val movieRecommendationModelService = MovieRecommendationModelService()
 
-    val movieRecommendationModelService = new MovieRecommendationModelService
+    import movieRecommendationModelService.ItemRating
 
     /* Top recommendations */
     val topMovies = movieRecommendationModelService.topItems(100)

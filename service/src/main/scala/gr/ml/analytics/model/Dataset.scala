@@ -1,13 +1,13 @@
-package data
+package gr.ml.analytics.model
 
 import java.io.FileOutputStream
-
-import sys.process._
 import java.net.URL
 import java.nio.file.{Files, Path}
 import java.util.zip.ZipInputStream
 
 import com.typesafe.scalalogging._
+
+import scala.sys.process._
 
 object Dataset extends LazyLogging {
 

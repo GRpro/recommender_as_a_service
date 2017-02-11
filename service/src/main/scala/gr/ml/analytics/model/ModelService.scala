@@ -1,7 +1,7 @@
-package model
+package gr.ml.analytics.model
 
 /**
-  * Base model interface
+  * Base gr.ml.analytics.model interface
   */
 trait ModelService[U, I, R] {
 

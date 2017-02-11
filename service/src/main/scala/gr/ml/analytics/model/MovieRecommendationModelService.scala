@@ -1,22 +1,34 @@
-package model
+package gr.ml.analytics.model
 
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.LazyLogging
-import data.Dataset
 import org.apache.spark.ml.recommendation.ALS
-import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
-
-import scala.io.StdIn
 
 case class Movie(id: Long, title: String)
 
-class MovieRecommendationModelService extends ModelService[Long, Movie, Double] with LazyLogging {
+object MovieRecommendationModelService {
 
   val datasetsDirectory = "datasets"
   val smallDatasetFileName = "ml-latest-small.zip"
   val smallDatasetUrl = s"http://files.grouplens.org/datasets/movielens/$smallDatasetFileName"
+
+  Dataset.loadResource(smallDatasetUrl,
+    Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
+  Dataset.unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath,
+    Paths.get(datasetsDirectory).toAbsolutePath)
+
+  def apply(): MovieRecommendationModelService = new MovieRecommendationModelService(
+    Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString,
+    Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString)
+}
+
+
+class MovieRecommendationModelService(val moviesDfPath: String,
+                                      val ratingsDfPath: String)
+  extends ModelService[Long, Movie, Double] with LazyLogging {
+
 
   private lazy val spark = SparkUtil.sparkSession()
 
@@ -26,14 +38,14 @@ class MovieRecommendationModelService extends ModelService[Long, Movie, Double] 
     .format("com.databricks.spark.csv")
     .option("header", "true") //reading the headers
     .option("mode", "DROPMALFORMED")
-    .load(Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString)
+    .load(moviesDfPath)
     .select("movieId", "title")
 
   private lazy val ratingsDF = spark.read
     .format("com.databricks.spark.csv")
     .option("header", "true") //reading the headers
     .option("mode", "DROPMALFORMED")
-    .load(Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString)
+    .load(ratingsDfPath)
     .select("userId", "movieId", "rating")
 
   private lazy val baseDF = ratingsDF
@@ -65,7 +77,7 @@ class MovieRecommendationModelService extends ModelService[Long, Movie, Double] 
 
     val Array(training, test) = encodedDF.randomSplit(Array(0.6, 0.4))
 
-    // Build the recommendation model using ALS on the training data
+    // Build the recommendation gr.ml.analytics.model using ALS on the training gr.ml.analytics.data
     val als = new ALS()
       .setMaxIter(5)
       .setRegParam(0.01)
@@ -106,7 +118,7 @@ class MovieRecommendationModelService extends ModelService[Long, Movie, Double] 
     //      .option("header", "true")
     //      .save("recommendations.csv")
 
-    //    // Evaluate the model by computing the RMSE on the test data
+    //    // Evaluate the gr.ml.analytics.model by computing the RMSE on the test gr.ml.analytics.data
     //    val evaluator = new RegressionEvaluator()
     //      .setMetricName("rmse")
     //      .setLabelCol("rating")
