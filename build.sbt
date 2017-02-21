@@ -24,7 +24,7 @@ val buildInfoSettings = Seq(
 )
 
 // root
-lazy val TwitterAnalytics = project.in(file("."))
+lazy val root = project.in(file("."))
   .settings(commonSettings: _*)
   .settings(
     name := "recommendation"
@@ -54,7 +54,13 @@ lazy val service = project.in(file("service"))
       )
     },
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7"
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
+    resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-actor" % "2.4.2",
+      "com.typesafe.akka" %% "akka-remote" % "2.4.2"
+      ),
+    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
   .dependsOn(api)
 

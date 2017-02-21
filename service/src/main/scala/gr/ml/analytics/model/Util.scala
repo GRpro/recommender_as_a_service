@@ -9,7 +9,7 @@ import com.typesafe.scalalogging._
 
 import scala.sys.process._
 
-object Dataset extends LazyLogging {
+object Util extends LazyLogging {
 
   def loadResource(url: String, path: Path) = {
     if (!Files.exists(path)) {
