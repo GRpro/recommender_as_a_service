@@ -10,15 +10,10 @@ package gr.ml.analytics
   */
 trait RecommendationService[U, I, R] {
 
-  def addUser(user: U): U
-
-  def addItem(item: I): I
-
   def getItems(n: Int): List[I]
 
   def rateItems(rated: List[(U, I, R)])
 
   def getTopNForUser(user: U, n: Int): List[(I, R)]
 
-  def getTopN(n: Int): List[(I, R)]
 }

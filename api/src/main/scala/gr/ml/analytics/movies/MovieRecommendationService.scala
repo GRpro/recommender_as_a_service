@@ -16,11 +16,12 @@ case class Rating(rating: Double, timestamp: String) {
 
 trait MovieRecommendationService extends RecommendationService[User, Movie, Rating]
 
+case class ItemsToBeRatedRequest(n: Int)
 
-case class TopNMoviesRequest(n: Int)
+case class ItemsToBeRated(items: List[Movie])
 
-case class TopNMovies(topN: List[(Movie, Rating)])
+case class RateItems(ratedItems: List[(User, Movie, Rating)])
 
-case class TopNMoviesForNewUserRequest(ratedItems: List[(User, Movie, Rating)], n: Int)
+case class TopNMoviesForUserRequest(user: User, n: Int)
 
-case class TopNMoviesForNewUser(topN: List[(Movie, Rating)])
+case class TopNMoviesForUser(topN: List[(User, Movie, Rating)])

@@ -42,7 +42,7 @@ class PredictionTest extends FlatSpec {
     predictionModel = predictionModelCreator.buildPredictionModel(dataStore)
   }
 
-  "Prediction of top items for the user" should "proceed correctly with no without errors" in {
+  "Prediction of top items for the user" should "proceed correctly with no errors" in {
     val topMovies = predictionModel.getTopNForUser(user, 10)
     assert(movie === topMovies.head._1)
   }
