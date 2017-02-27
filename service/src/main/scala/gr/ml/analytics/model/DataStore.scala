@@ -102,7 +102,7 @@ case class DataStore(sparkSession: SparkSession,
     * Retrieve movies to rate
     */
   def movies(n: Int): List[Movie] = {
-    moviesDF
+    val resultDF = moviesDF
       .join(linksDF, "movieId")
       .select("movieId", "title", "genres", "imdbId", "tmdbId")
       .map(row => {
@@ -113,7 +113,9 @@ case class DataStore(sparkSession: SparkSession,
         val tmdbId = row.getString(4)
         Movie(movieId, title, genres, imdbId, tmdbId)
       })
-      .take(n).toList
+
+    if (n > 0) resultDF.take(n).toList
+    else resultDF.collect().toList
   }
 
   /**
@@ -121,22 +123,19 @@ case class DataStore(sparkSession: SparkSession,
     */
   def rate(rated: List[(User, Movie, Rating)]): DataStore = {
 
-    val newLinksDF = rated
-      .map(row => (row._2.id, row._2.imdbId, row._2.tmdbId))
-      .toDF("movieId", "imdbId", "tmdbId")
-
-    val newMoviesDF = rated
-      .map(row => (row._2.id, row._2.title, row._2.genres))
-      .toDF("movieId", "title", "genres")
+//    val newLinksDF = rated
+//      .map(row => (row._2.id, row._2.imdbId, row._2.tmdbId))
+//      .toDF("movieId", "imdbId", "tmdbId")
+//
+//    val newMoviesDF = rated
+//      .map(row => (row._2.id, row._2.title, row._2.genres))
+//      .toDF("movieId", "title", "genres")
 
     val newRatingsDF = rated
-      .map(row => (row._1.id, row._2.id, row._3.rating, row._3.timestamp))
+      .map(row => (row._1.userId, row._2.movieId, row._3.rating, row._3.timestamp))
       .toDF("userId", "movieId", "rating", "timestamp")
 
-    copy(
-      moviesDF = moviesDF.union(newMoviesDF),
-      linksDF = linksDF.union(newLinksDF),
-      ratingsDF = ratingsDF.union(newRatingsDF))
+    copy(ratingsDF = ratingsDF.union(newRatingsDF))
   }
 
   def composedDF = ratingsDF
@@ -202,7 +201,7 @@ class PredictionModel(val sparkSession: SparkSession,
     val topRecommended = sparkSession.sql(
       s"SELECT movieId, title, genres, imdbId, tmdbId, prediction " +
         s"FROM $viewName " +
-        s"WHERE userId = ${user.id} " +
+        s"WHERE userId = ${user.userId} " +
         s"ORDER BY prediction DESC")
 
     topRecommended.show()

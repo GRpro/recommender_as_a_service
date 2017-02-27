@@ -71,6 +71,12 @@ lazy val webapp = project.in(file("webapp"))
   .settings(
     name := "recommendation-webapp"
   )
+  .settings(
+    resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+    libraryDependencies += filters,
+    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test,
+    libraryDependencies += "com.typesafe.akka" %% "akka-remote" % "2.4.2"
+  )
   .dependsOn(api)
 
 

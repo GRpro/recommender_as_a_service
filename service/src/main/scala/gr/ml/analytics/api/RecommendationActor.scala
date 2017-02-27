@@ -19,14 +19,14 @@ class RecommendationActor extends Actor with LazyLogging {
 
   def predictionsState: Receive = {
     case ItemsToBeRatedRequest(n) =>
-      ItemsToBeRated(service.getItems(n))
+      sender ! ItemsToBeRated(service.getItems(n))
 
     case RateItems(ratedItems) =>
       logger.info(s"Rate ${ratedItems.size} items")
       service.rateItems(ratedItems)
 
     case TopNMoviesForUserRequest(user, n) =>
-      TopNMoviesForUser(
+      sender ! TopNMoviesForUser(
         service.getTopNForUser(user, n)
         .map(itemRating => (user, itemRating._1, itemRating._2)))
   }
