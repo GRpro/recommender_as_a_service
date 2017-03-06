@@ -10,6 +10,6 @@ GET     /                           controllers.MainController.index
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
 
 # Internal REST API
-GET     /items/:n                      controllers.MainController.getItems(n: Int)
+GET     /movies/:n                      controllers.MainController.getItems(n: Int)
 POST    /rate                       controllers.MainController.rate
 GET     /recommendations/:userId            controllers.MainController.recommendationForUser(userId: Int)
