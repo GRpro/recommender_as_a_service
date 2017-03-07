@@ -1,6 +1,6 @@
 package gr.ml.analytics.model
 
-import gr.ml.analytics.movies.{Movie, Rating, User}
+import gr.ml.analytics.entities.{Movie, Rating, User}
 import org.scalatest._
 
 

@@ -1,7 +1,7 @@
 package gr.ml.analytics.model
 
 import com.typesafe.scalalogging.LazyLogging
-import gr.ml.analytics.movies.{Movie, MovieRecommendationService, Rating, User}
+import gr.ml.analytics.entities.{Movie, MovieRecommendationService, Rating, User}
 
 object MovieRecommendationServiceImpl {
 

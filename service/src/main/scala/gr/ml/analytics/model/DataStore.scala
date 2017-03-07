@@ -2,7 +2,7 @@ package gr.ml.analytics.model
 
 import java.nio.file.Paths
 
-import gr.ml.analytics.movies.{Movie, Rating, User}
+import gr.ml.analytics.entities.{Movie, Rating, User}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
