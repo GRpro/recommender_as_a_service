@@ -15,18 +15,25 @@ object MovieRecommendationServiceImpl {
 }
 
 class MovieRecommendationServiceImpl(var dataStore: DataStore) extends MovieRecommendationService with LazyLogging {
-
+  var model: Option[PredictionModel] = None
   override def getItems(n: Int): List[Movie] = {
     dataStore.movies(n)
   }
 
   override def rateItems(rated: List[(User, Movie, Rating)]): Unit = {
     dataStore = dataStore.rate(rated)
+    model = Some(dataStore.trainModel.buildPredictionModel(dataStore))
   }
 
   override def getTopNForUser(user: User, n: Int): List[(Movie, Rating)] = {
-    // TODO reuse prediction model
-    dataStore.trainModel.buildPredictionModel(dataStore).getTopNForUser(user, n)
+    model match {
+      case Some(m) =>
+        m.getTopNForUser(user, n)
+      case None =>
+        model = Some(dataStore.trainModel.buildPredictionModel(dataStore))
+        List()
+    }
+
   }
 
 }

@@ -207,14 +207,14 @@ class PredictionModel(val sparkSession: SparkSession,
     topRecommended.show()
 
     topRecommended.take(n).map(row => {
-      val movieId: Long = row.getLong(0)
+      val movieId: Long = row.getInt(0).toLong
       val title: String = row.getString(1)
       val genres: String = row.getString(2)
       val imdbld: String = row.getString(3)
       val tmdbld: String = row.getString(4)
       val rating: Double = row.getFloat(5).toDouble
 
-      (Movie(movieId, title, genres, imdbld, tmdbld), Rating(rating, null))
+      (Movie(movieId, title, genres, imdbld, tmdbld), Rating(rating, "empty"))
     }).toList
   }
 }

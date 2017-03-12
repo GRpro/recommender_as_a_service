@@ -16,7 +16,7 @@
 
     <!-- Custom CSS -->
     <link href="static/css/scrolling-nav.css" rel="stylesheet">
-
+    <link href="static/css/movies-pannel.css" rel="stylesheet">
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -28,7 +28,7 @@
 
 <!-- The #page-top ID is part of the scrolling feature - the data-spy and data-target are part of the built-in Bootstrap scrollspy function -->
 
-<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top" ng-app="movieRatings" ng-controller="movieRatingsController">
 
     <!-- Navigation -->
     <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -51,7 +51,7 @@
                         <a class="page-scroll" href="#page-top"></a>
                     </li>
                     <li>
-                        <a class="page-scroll" href="#about">About</a>
+                        <a class="page-scroll" href="#page-predictions">Predictions</a>
                     </li>
                     <li>
                         <a class="page-scroll" href="#contact">Contact</a>
@@ -63,29 +63,56 @@
         <!-- /.container -->
     </nav>
 
+
     <!-- Intro Section -->
     <section id="intro" class="intro-section">
         <div class="container">
 
             <!-- Angular application -->
-            <div ng-app>
+            <div>
 
+                <h4>1. Rate these movies</h4>
+                <div class="panel panel-default" >
+                    <div class="panel-body">
+                        <table id="myTable" class="table table-fixedheader table-striped">
+                            <thead>
+                            <tr>
+                                <th width="5%">N</th>
+                                <th width="25%">Movie Title/Year</th>
+                                <th width="25%">Movie Genres</th>
+                                <th width="10%">imdb</th>
+                                <th width="10%">themoviedb</th>
+                                <th width="25%">Your rating</th>
+                            </tr>
+                            </thead>
+                            <tbody style="height:110px">
 
-                <div class="row" ng-controller = "moviesController">
-                    <div class="col-lg-12">
-
-                        <h1>Rate following movies</h1>
-
-                        <div ng-repeat="movie in movies" >
-                            {{$index}}: {{movie.title}} is {{movie.genres}}
-                        </div>
-
-
-                        <h1>Scrolling Nav</h1>
-                        <p><strong>Usage Instructions:</strong> Make sure to include the <code>scrolling-nav.js</code>, <code>jquery.easing.min.js</code>, and <code>scrolling-nav.css</code> files. To make a link smooth scroll to another section on the page, give the link the <code>.page-scroll</code> class and set the link target to a corresponding ID on the page.</p>
-                        <a class="btn btn-default page-scroll" href="#about">Click Me to Scroll Down!</a>
+                            <tr ng-repeat="movie in movies">
+                                <td width="5%">{{$index}}</td>
+                                <td width="25%">{{movie.title}}</td>
+                                <td width="25%">{{movie.genres}}</td>
+                                <td width="10%">
+                                    <a href="http://www.imdb.com/title/tt{{movie.imdbId}}/">www.imdb.com</a>
+                                </td>
+                                <td width="10%">
+                                    <a href="https://www.themoviedb.org/movie/{{movie.tmdbId}}/">www.themoviedb.org</a>
+                                </td>
+                                <th width="25%">
+                                    <input ng-model="movie.rating"/>
+                                    <span ng-bind = "movie.rating"></span>
+                                </th>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+
+                <h4>2. Send your ratings</h4>
+
+                <a class="btn btn-default" ng-click="postRatings()">Send ratings</a>
+                <a class="btn btn-default page-scroll" ng-click="getRatings()" href="#page-predictions">Compute predictions</a>
+
+
             </div>
 
         </div>
@@ -93,11 +120,39 @@
     </section>
 
     <!-- About Section -->
-    <section id="about" class="about-section">
+    <section id="page-predictions" class="about-section">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-12">
-                    <h1>About Section</h1>
+            <h4>Predictions</h4>
+
+            <div class="panel panel-default" >
+                <div class="panel-body">
+                    <table id="predictionsTable" class="table table-fixedheader table-striped">
+                        <thead>
+                        <tr>
+                            <th width="5%">N</th>
+                            <th width="25%">Movie Title/Year</th>
+                            <th width="25%">Movie Genres</th>
+                            <th width="10%">imdb</th>
+                            <th width="10%">themoviedb</th>
+                            <th width="25%">Predicted rating</th>
+                        </tr>
+                        </thead>
+                        <tbody style="height:110px">
+
+                        <tr ng-repeat="movieRating in predictions">
+                            <td width="5%">{{$index}}</td>
+                            <td width="25%">{{movieRating.movie.title}}</td>
+                            <td width="25%">{{movieRating.movie.genres}}</td>
+                            <td width="10%">
+                                <a href="http://www.imdb.com/title/tt{{movieRating.movie.imdbId}}/">www.imdb.com</a>
+                            </td>
+                            <td width="10%">
+                                <a href="https://www.themoviedb.org/movie/{{movieRating.movie.tmdbId}}/">www.themoviedb.org</a>
+                            </td>
+                            <th width="25%">{{movieRating.rating.rating}}</th>
+                        </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -124,18 +179,76 @@
     <script src="static/js/jquery.easing.min.js"></script>
     <script src="static/js/scrolling-nav.js"></script>
 
+
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.js"></script>
+
     <script>
 
-        function moviesController($scope, $http) {
-            $http.get('http://localhost:8080/movies/10')
-                .then(function(response){
-                    $scope.movies = response.data;
-                })
-        }
+        var app = angular.module('movieRatings', []);
 
+//        app.config(['$httpProvider', function($httpProvider) {
+//            //Enable cross domain calls
+//            $httpProvider.defaults.useXDomain = true;
+//
+//            // increase timeout to 20s
+//            $httpProvider.defaults.timeout = 20000;
+//        }
+//        ]);
+
+        app.config(['$qProvider', function ($qProvider) {
+            $qProvider.errorOnUnhandledRejections(false);
+        }]);
+
+        app.controller('movieRatingsController', function ($scope, $http) {
+                var movies = [];
+                $http.get('http://localhost:8080/movies/3')
+                    .then(function (response) {
+                        $scope.movies = response.data;
+                        movies = response.data;
+                    });
+
+                $scope.predictions = [];
+
+                $scope.getRatings = function () {
+                    $http.get('http://localhost:8080/ratings/1/top/10')
+                        .then(function (response) {
+                            $scope.predictions = response.data;
+                        });
+                };
+
+                $scope.postRatings = function () {
+
+                    var userMovieRatings = movies.map(function(mv) {
+                        return {
+                            "user": {
+                                "userId": 0
+                            },
+                            "movie": {
+                                "genres": mv.genres,
+                                "tmdbId": mv.tmdbId,
+                                "title": mv.title,
+                                "movieId": mv.movieId,
+                                "imdbId": mv.imdbId
+                            },
+                            "rating": {
+                                "rating": 1.0,
+                                "timestamp": "now"
+                            }
+                        }
+                    });
+
+                    console.log(userMovieRatings);
+
+                    $http({
+                        url:'/ratings',
+                        method:"POST",
+//                        headers: { 'Content-Type': 'application/json' },
+//                        withCredentials: true,
+                        data: JSON.stringify(userMovieRatings)
+                    });
+                }
+            })
     </script>
-    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.2.15/angular.min.js"></script>
-
 </body>
 
 </html>
