@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Movie recommendation service</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="static/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="static/css/scrolling-nav.css" rel="stylesheet">
+    <link href="static/css/movies-pannel.css" rel="stylesheet">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<!-- The #page-top ID is part of the scrolling feature - the data-spy and data-target are part of the built-in Bootstrap scrollspy function -->
+
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top" ng-app="movieRatings" ng-controller="movieRatingsController">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand page-scroll" href="#page-top">Movie Recommendation</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse navbar-ex1-collapse">
+                <ul class="nav navbar-nav">
+                    <!-- Hidden li included to remove active class from about link when scrolled up past about section -->
+                    <li class="hidden">
+                        <a class="page-scroll" href="#page-top"></a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" href="#page-predictions">Predictions</a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" href="#contact">Contact</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+
+    <!-- Intro Section -->
+    <section id="intro" class="intro-section">
+        <div class="container">
+
+            <!-- Angular application -->
+            <div>
+
+                <h1>Movie scores</h1>
+
+                <div class="panel panel-default" >
+                    <div class="panel-body">
+                        <table id="myTable" class="table table-fixedheader table-striped">
+                            <thead>
+                            <tr>
+                                <th width="5%">N</th>
+                                <th width="25%">Movie Title/Year</th>
+                                <th width="25%">Movie Genres</th>
+                                <th width="10%">imdb</th>
+                                <th width="10%">themoviedb</th>
+                                <th width="25%">Your rating</th>
+                            </tr>
+                            </thead>
+                            <tbody style="height:110px">
+
+                            <tr ng-repeat="movie in movies">
+                                <td width="5%">{{$index}}</td>
+                                <td width="25%">{{movie.title}}</td>
+                                <td width="25%">{{movie.genres}}</td>
+                                <td width="10%">
+                                    <a href="http://www.imdb.com/title/tt{{movie.imdbId}}/">www.imdb.com</a>
+                                </td>
+                                <td width="10%">
+                                    <a href="https://www.themoviedb.org/movie/{{movie.tmdbId}}/">www.themoviedb.org</a>
+                                </td>
+                                <th width="25%">
+                                    <input ng-model="movie.rating"/>
+                                </th>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-4">
+                        <a class="btn btn-default" ng-click="postRatings()">Send ratings</a>
+                        <!--<input type="number" value="0" min="0" ng-model="ratingsUserId"/>-->
+                        <!--<p/>-->
+                        <strong>Ratings for user ID <code>{{ ratingsUserId }}</code></strong>
+                    </div>
+                    <div class="col-sm-4">
+                    </div>
+                    <div class="col-sm-4">
+                        <a class="btn btn-default page-scroll" ng-click="getRatings()" href="#page-predictions">Compute predictions</a>
+                        <!--<input type="number" value="0" min="0" ng-model="predictionUserId"/>-->
+                        <!--<p/>-->
+                        <strong>Predictions user ID <code>{{ predictionUserId }}</code></strong>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- About Section -->
+    <section id="page-predictions" class="about-section">
+        <div class="container">
+            <h1>Movie predictions</h1>
+
+            <div class="panel panel-default" >
+                <div class="panel-body">
+                    <table id="predictionsTable" class="table table-fixedheader table-striped">
+                        <thead>
+                        <tr>
+                            <th width="5%">N</th>
+                            <th width="25%">Movie Title/Year</th>
+                            <th width="25%">Movie Genres</th>
+                            <th width="10%">imdb</th>
+                            <th width="10%">themoviedb</th>
+                            <th width="25%">Predicted rating</th>
+                        </tr>
+                        </thead>
+                        <tbody style="height:110px">
+
+                        <tr ng-repeat="movieRating in predictions">
+                            <td width="5%">{{$index}}</td>
+                            <td width="25%">{{movieRating.movie.title}}</td>
+                            <td width="25%">{{movieRating.movie.genres}}</td>
+                            <td width="10%">
+                                <a href="http://www.imdb.com/title/tt{{movieRating.movie.imdbId}}/">www.imdb.com</a>
+                            </td>
+                            <td width="10%">
+                                <a href="https://www.themoviedb.org/movie/{{movieRating.movie.tmdbId}}/">www.themoviedb.org</a>
+                            </td>
+                            <th width="25%">{{movieRating.rating.rating}}</th>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    <h1>Contact Section</h1>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- jQuery -->
+    <script src="static/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="static/js/bootstrap.min.js"></script>
+
+    <!-- Scrolling Nav JavaScript -->
+    <script src="static/js/jquery.easing.min.js"></script>
+    <script src="static/js/scrolling-nav.js"></script>
+
+
+    <!-- Angular and modules -->
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.js"></script>
+    <script>
+        var app = angular.module('movieRatings', []);
+
+        app.config(['$qProvider', function ($qProvider) {
+            $qProvider.errorOnUnhandledRejections(false);
+        }]);
+
+        app.controller('movieRatingsController',['$scope', '$http', function ($scope, $http) {
+
+
+            var movies = [];
+            var clientUser = {
+                "predictionUserId": 1,
+                "ratingsUserId": 1
+            }
+
+            $http.get('/movies/3')
+                .then(function (response) {
+                    $scope.movies = response.data;
+                    movies = response.data;
+                });
+
+            $scope.predictions = [];
+            $scope.ratingsUserId = clientUser.ratingsUserId;
+            $scope.predictionUserId = clientUser.predictionUserId;
+
+            /**
+             * Get top ratings for user with id 0
+             */
+            $scope.getRatings = function () {
+
+                console.log("Getting ratings for user " + clientUser.ratingsUserId);
+
+                $http.get('/ratings/' + clientUser.ratingsUserId + '/top/10')
+                    .then(function (response) {
+                        $scope.predictions = response.data;
+                    });
+            };
+
+            /**
+             * Post user ratings
+             */
+            $scope.postRatings = function () {
+
+                console.log("Getting ratings for user " + clientUser.predictionUserId);
+
+                var userMovieRatings = movies.map(function(mv) {
+                    return {
+                        "user": {
+                            "userId": clientUser.predictionUserId
+                        },
+                        "movie": {
+                            "genres": mv.genres,
+                            "tmdbId": mv.tmdbId,
+                            "title": mv.title,
+                            "movieId": mv.movieId,
+                            "imdbId": mv.imdbId
+                        },
+                        "rating": {
+                            "rating": mv.rating,
+                            "timestamp": "now"
+                        }
+                    }
+                });
+
+                $http({
+                    url:'/ratings',
+                    method:"POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    data: JSON.stringify(userMovieRatings)
+                });
+            }
+        }])
+    </script>
+</body>
+
+</html>

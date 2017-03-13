@@ -3,9 +3,12 @@ package gr.ml.analytics.api
 import akka.actor.Actor
 import gr.ml.analytics.entities._
 import gr.ml.analytics.model.MovieRecommendationServiceImpl
+import spray.http.HttpHeaders.RawHeader
 import spray.http.{MediaTypes, StatusCodes}
 import spray.httpx.SprayJsonSupport._
 import spray.routing.HttpService
+import spray.http._
+import spray.routing._
 
 /**
   * Spray REST API
@@ -24,7 +27,7 @@ class RecommendationServiceAPI extends Actor with HttpService {
   private val ratingsRoute = {
     /*
     Create new User Movie Rating relationships
-     */
+    */
     path("ratings") {
       post {
         entity(as[List[UserMovieRating]]) { ratings =>
@@ -32,23 +35,25 @@ class RecommendationServiceAPI extends Actor with HttpService {
           service.rateItems(ratings.map(userMovieRating =>
             (userMovieRating.user, userMovieRating.movie, userMovieRating.rating)))
 
-          complete(StatusCodes.Created)
-        }
-      }
-    } ~
-    /*
-    Get top N movies for a particular user
-     */
-    path("ratings" / LongNumber / "top" / IntNumber) { (userId, number) =>
-      get {
-        val topN = service.getTopNForUser(User(userId), number)
-        respondWithMediaType(MediaTypes.`application/json`) {
-          complete {
-            topN.map(movieRating => MovieRating(movieRating._1, movieRating._2))
+          respondWithMediaType(MediaTypes.`application/json`) {
+            complete(StatusCodes.Created)
           }
         }
       }
-    }
+    } ~ /*
+      Get top N movies for a particular user
+       */
+      path("ratings" / LongNumber / "top" / IntNumber) { (userId, number) =>
+        get {
+          val topN = service.getTopNForUser(User(userId), number)
+          respondWithMediaType(MediaTypes.`application/json`) {
+            complete {
+              val converted = topN.map(movieRating => MovieRating(movieRating._1, movieRating._2))
+              converted
+            }
+          }
+        }
+      }
   }
 
   /**
