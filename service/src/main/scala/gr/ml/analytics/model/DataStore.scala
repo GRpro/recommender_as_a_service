@@ -71,16 +71,6 @@ object DataStore {
         .withColumn("rating", toDouble(ratingsStringDF("rating")))
     }
 
-    /*
-    TODO
-    private var tagsDF = spark.read
-      .format("com.databricks.spark.csv")
-      .option("header", "true") //reading the headers
-      .option("mode", "DROPMALFORMED")
-      .load(linksDfPath)
-      .select("userId", "movieId", "tag", "timestamp")
-    */
-
     new DataStore(sparkSession, moviesDF, ratingsDF, linksDF, null)
   }
 

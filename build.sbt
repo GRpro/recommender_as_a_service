@@ -74,8 +74,8 @@ lazy val service = project.in(file("service"))
         "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
         "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
         "org.specs2" %% "specs2" % "2.3.13" % "test",
-        "io.spray" %% "spray-testkit" % sprayVersion % "test"
-
+        "io.spray" %% "spray-testkit" % sprayVersion % "test",
+        "com.github.tototoshi" %% "scala-csv" % "1.3.0"
       )
     },
 
