@@ -8,7 +8,7 @@ package gr.ml.analytics
   * @tparam I item type
   * @tparam R rating type
   */
-trait RecommendationService[U, I, R] {
+trait RecommendationServiceAPI[U, I, R] {
 
   def getItems(n: Int): List[I]
 
