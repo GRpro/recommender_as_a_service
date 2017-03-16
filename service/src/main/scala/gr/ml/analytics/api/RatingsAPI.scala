@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRefFactory}
 import gr.ml.analytics.service.RatingsService
 import spray.http.{MediaTypes, StatusCodes}
 import spray.httpx.SprayJsonSupport._
+import spray.json.DefaultJsonProtocol._
 import spray.routing.{HttpService, _}
 
 

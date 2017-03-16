@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRefFactory}
 import gr.ml.analytics.service.MoviesService
 import spray.http.MediaTypes
 import spray.httpx.SprayJsonSupport._
+import spray.json.DefaultJsonProtocol._
 import spray.routing.ExceptionHandler._
 import spray.routing.{HttpService, RoutingSettings}
 

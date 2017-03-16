@@ -1,6 +1,6 @@
 package gr.ml.analytics.service
 
-import gr.ml.analytics.entities.{MovieRating, PredictedMovies}
+import gr.ml.analytics.entities.MovieRating
 
 trait RatingsService {
 
@@ -16,7 +16,7 @@ trait RatingsService {
     * @param userId id of the user to get recommendations for
     * @param pageSize size of page
     * @param page number of page
-    * @return list of list of [[MovieRating]] objects // TODO update
+    * @return ordered list of movie ids
     */
-  def getTop(userId: Int, pageSize: Int, page: Int): PredictedMovies // TODO top N or pagination??
+  def getTop(userId: Int, pageSize: Int, page: Int): List[Int] // TODO top N or pagination??
 }

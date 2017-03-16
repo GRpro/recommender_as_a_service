@@ -1,5 +1,4 @@
 package gr.ml.analytics.service
-import gr.ml.analytics.entities.{MovieRating, PredictedMovies}
 
 class RatingsServiceImpl extends RatingsService {
   /**
@@ -14,15 +13,14 @@ class RatingsServiceImpl extends RatingsService {
 
   /**
     * Get most relevant movies for a given user
-    *
-    * @param userId   id of the user to get recommendations for
+    * @param userId id of the user to get recommendations for
     * @param pageSize size of page
-    * @param page     number of page
-    * @return list of list of [[MovieRating]] objects // todo update
+    * @param page number of page
+    * @return ordered list of movie ids
     */
-  override def getTop(userId: Int, pageSize: Int, page: Int): PredictedMovies = { // TODO top N or pagination?
-    println(s"Get top ratings")
+  override def getTop(userId: Int, pageSize: Int, page: Int): List[Int] = { // TODO top N or pagination?
+    println("Get top ratings")
     val predictedMovieIds = new RatingService().loadPredictions(userId.toInt, pageSize)
-    PredictedMovies(predictedMovieIds)
+    predictedMovieIds
   }
 }

@@ -27,13 +27,6 @@ object MovieRating extends DefaultJsonProtocol {
   implicit val movieRatingFormat = jsonFormat2(MovieRating.apply)
 }
 
-case class PredictedMovies(predictedMovieIds: List[Int]) {
-}
-
-object PredictedMovies extends DefaultJsonProtocol {
-  implicit val predictedMoviesFormat = jsonFormat1(PredictedMovies.apply)
-}
-
 // TODO Old entities below - remove them
 
 case class Rating(rating: Double, timestamp: String) {

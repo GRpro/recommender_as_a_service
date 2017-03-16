@@ -28,13 +28,13 @@ class RatingService {
   lazy val sparkSession = SparkUtil.sparkSession()
   import sparkSession.implicits._
 
-  def persistRating(userId: Int, movieId: Int, rating: Double): Unit ={
+  def persistRating(userId: Int, movieId: Int, rating: Double): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(RatingService.currentRatingsPath, append = true)
     writer.writeRow(List(userId.toString, movieId.toString,rating.toString,(System.currentTimeMillis/1000).toString))
   }
 
-  def persistPredictions(userId: Int, predictedMovieIds: java.util.List[Int]): Unit ={
+  def persistPredictions(userId: Int, predictedMovieIds: java.util.List[Int]): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(RatingService.predictionsPath, append = true)
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
@@ -51,7 +51,7 @@ class RatingService {
     predictedMovieIds
   }
 
-  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] ={
+  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {
     val toRateDS: DataFrame = getMoviesNotRatedByUser(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS).orderBy(col("prediction").desc)
@@ -59,7 +59,7 @@ class RatingService {
     predictedMovieIds
   }
 
-  def getMoviesNotRatedByUser(userId: Int): DataFrame ={
+  def getMoviesNotRatedByUser(userId: Int): DataFrame = {
     val reader = CSVReader.open(RatingService.historicalRatingsPath) // TODO add support of several files, not just historical data
     // TODO could we do it more effective that reading all the file at once? Would be still OK for larger files?
     val movieIds = reader.all().filter((p:List[String])=>p(1)!="movieId" && p(0).toInt!=userId).map((p:List[String]) => p(1).toInt).toSet
@@ -71,11 +71,11 @@ class RatingService {
     ALSModel.load(RatingService.modelPath)
   }
 
-  def writeModel(model: ALSModel): Unit ={
+  def writeModel(model: ALSModel): Unit = {
     model.write.overwrite().save(RatingService.modelPath)
   }
 
-  def updateModel(): Unit ={
+  def updateModel(): Unit = {
     val ratingsDF = loadRatings(RatingService.bothRatingsPath)
 
     val als = new ALS()
@@ -89,7 +89,7 @@ class RatingService {
     writeModel(model)
   }
 
-  def loadRatings(path: String): DataFrame ={
+  def loadRatings(path: String): DataFrame = {
     val ratingsDF = {
       val ratingsStringDF = sparkSession.read
         .format("com.databricks.spark.csv")
