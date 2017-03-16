@@ -1,10 +1,10 @@
 package gr.ml.analytics.api
 
 import akka.actor.{Actor, ActorRefFactory}
-import gr.ml.analytics.entities.MovieRating
 import gr.ml.analytics.service.RatingsService
 import spray.http.{MediaTypes, StatusCodes}
 import spray.httpx.SprayJsonSupport._
+import spray.json.DefaultJsonProtocol._
 import spray.routing.{HttpService, _}
 
 
@@ -21,20 +21,18 @@ class RatingsAPI(val service: RatingsService) extends Actor with HttpService {
     respondWithMediaType(MediaTypes.`application/json`) {
 
       path("ratings") {
-        post {
-          entity(as[List[MovieRating]]) { ratings =>
-            parameter('userId.as[Long]) { userId =>
+        post { // TODO shouldn't we provide parameters in request body for post?
+          parameters('userId.as[Int], 'movieId.as[Int], 'rating.as[Double]) { (userId, movieId, rating) =>
 
-              service.create(userId, ratings)
+            service.create(userId, movieId, rating)
 
-              complete(StatusCodes.Created)
-            }
+            complete(StatusCodes.Created)
           }
         }
       } ~
         path("ratings") {
           get {
-            parameters('userId.as[Long], 'pageSize.as[Int], 'page.as[Int]) { (userId, pageSize, page) =>
+            parameters('userId.as[Int], 'pageSize.as[Int], 'page.as[Int]) { (userId, pageSize, page) =>
               complete {
                 service.getTop(userId, pageSize, page)
               }

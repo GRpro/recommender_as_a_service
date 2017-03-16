@@ -27,7 +27,6 @@ object MovieRating extends DefaultJsonProtocol {
   implicit val movieRatingFormat = jsonFormat2(MovieRating.apply)
 }
 
-
 // TODO Old entities below - remove them
 
 case class Rating(rating: Double, timestamp: String) {

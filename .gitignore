@@ -1,4 +1,6 @@
 **/datasets
+**/data
+*.dat
 .idea
 **/target
 **/*.class
