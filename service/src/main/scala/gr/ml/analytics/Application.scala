@@ -25,6 +25,6 @@ object Application extends App {
   val ratingsApi = system.actorOf(Props[RatingsAPI](new RatingsAPI(ratingsService)), "ratings-api")
   val moviesApi = system.actorOf(Props[MoviesAPI](new MoviesAPI(moviesService)), "movies-api")
 
-  IO(Http) ! Http.Bind(moviesApi, interface = "0.0.0.0", port = 8080)
-  IO(Http) ! Http.Bind(ratingsApi, interface = "0.0.0.0", port = 8081)
+  IO(Http) ! Http.Bind(moviesApi, interface = "0.0.0.0", port = 18080)
+  IO(Http) ! Http.Bind(ratingsApi, interface = "0.0.0.0", port = 18081)
 }
