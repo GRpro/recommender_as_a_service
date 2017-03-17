@@ -26,6 +26,7 @@ class RatingService {
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
 
   lazy val sparkSession = SparkUtil.sparkSession()
+
   import sparkSession.implicits._
 
   def persistRating(userId: Int, movieId: Int, rating: Double): Unit = {
@@ -39,12 +40,14 @@ class RatingService {
     val writer = CSVWriter.open(RatingService.predictionsPath, append = true)
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
   }
+
   def loadPredictions(userId: Int, limit: Int) = {
     val reader = CSVReader.open(RatingService.predictionsPath)
     val filtered = reader.all().filter((pr:List[String])=>pr(0).toInt == userId)
     val predictedMovieIdsFromFile = filtered.map((pr:List[String]) => pr(1).split(":").toList.map(m=>m.toInt)).last.take(limit)
     predictedMovieIdsFromFile
   }
+
   def updatePredictionsForUser(userId: Int): java.util.List[Int] = {
     val predictedMovieIds: java.util.List[Int] = calculatePredictedIdsForUser(userId, readModel())
     persistPredictions(userId, predictedMovieIds)

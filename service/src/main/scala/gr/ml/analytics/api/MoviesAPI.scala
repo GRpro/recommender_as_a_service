@@ -36,8 +36,17 @@ class MoviesAPI(val service: MoviesService) extends Actor with HttpService {
             }
           }
         }
+      } ~
+      path("movies") {
+        get {
+          parameter('query.as[String]) { query =>
+            complete {
+              // TODO implement search by query
+              ???
+            }
+          }
+        }
       }
-
     }
   }
 }
