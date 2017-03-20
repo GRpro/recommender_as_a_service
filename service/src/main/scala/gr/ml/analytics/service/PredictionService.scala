@@ -1,9 +1,7 @@
 package gr.ml.analytics.service
 
-import java.io.File
-import java.nio.file.Paths
-
 import com.github.tototoshi.csv.CSVReader
+import gr.ml.analytics.Constants
 import gr.ml.analytics.model.SparkUtil
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.DataFrame
@@ -11,14 +9,7 @@ import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
 
-object PredictionService{
-  val datasetsDirectory = "data"
-  val historicalRatingsPath = Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString
-  val currentRatingsPath = Paths.get(datasetsDirectory, "ml-latest-small", "current-ratings.csv").toAbsolutePath.toString
-  val predictionsPath = Paths.get(datasetsDirectory, "ml-latest-small", "predictions.csv").toAbsolutePath.toString
-  val modelPath = Paths.get(datasetsDirectory, "model").toAbsolutePath.toString
-  val bothRatingsPath = Paths.get(datasetsDirectory, "ml-latest-small").toAbsolutePath.toString + File.separator + "*ratings.csv"
-}
+object PredictionService extends Constants
 
 class PredictionService {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)
@@ -29,6 +20,7 @@ class PredictionService {
 
   def updateModel(): Unit = {
     val ratingsDF = loadRatings(PredictionService.bothRatingsPath)
+    ratingsDF.show()
 
     val als = new ALS()
       .setMaxIter(5) // TODO extract into settable fields
