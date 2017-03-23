@@ -4,6 +4,9 @@ import com.github.tototoshi.csv._
 import gr.ml.analytics.Constants
 
 class RatingServiceImpl extends RatingService with Constants {
+    // creating file for current ratings
+    val writer = CSVWriter.open(currentRatingsPath, append = false)
+    writer.writeRow(List("userId", "movieId","rating","timestamp"))
 
   /**
     * Create new ratings for a given user
@@ -25,8 +28,8 @@ class RatingServiceImpl extends RatingService with Constants {
     */
   override def getTop(userId: Int, n: Int): List[Int] = {
     val reader = CSVReader.open(predictionsPath)
-    val filtered = reader.all().filter((pr: List[String]) => pr(0).toInt == userId)
-    val predictedMovieIdsFromFile = filtered.map((pr: List[String]) => pr(1).split(":").toList.map(m => m.toInt)).last.take(n)
+    val filtered = reader.all().filter((pr: List[String]) => pr(0).toInt == userId).last
+    val predictedMovieIdsFromFile = filtered(1).split(":").toList.map(m => m.toInt).take(n)
     predictedMovieIdsFromFile
   }
 }
