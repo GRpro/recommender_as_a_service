@@ -2,7 +2,7 @@ package gr.ml.analytics
 
 import java.nio.file.Paths
 
-import gr.ml.analytics.service.{RecommenderService, RecommenderServiceImpl}
+import gr.ml.analytics.service.cf.{PredictionService, RatingService, RatingServiceImpl}
 import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.apache.spark.sql.expressions.UserDefinedFunction
