@@ -3,7 +3,8 @@ import sbt.Keys._
 val commonSettings = Seq(
   organization := "gr.ml.analytics",
   /* Get short version of the last commit id */
-  version := s"${Process("git log --pretty=format:'%h' -n 1").lines.head}",
+  //version := s"${Process("git log --pretty=format:'%h' -n 1").lines.head}",
+  version := "0.1",
   scalaVersion := "2.11.8",
   javacOptions ++= Seq("-encoding", "UTF-8")
 )
@@ -82,23 +83,6 @@ lazy val service = project.in(file("service"))
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
   .dependsOn(api)
-
-//lazy val webapp = project.in(file("webapp"))
-//  .enablePlugins(PlayScala)
-//  .settings(commonSettings: _*)
-//  .settings(buildInfoSettings: _*)
-//  .settings(
-//    name := "recommendation-webapp"
-//  )
-//  .settings(
-//    resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-//    libraryDependencies += filters,
-//    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test,
-//    libraryDependencies += "com.typesafe.akka" %% "akka-remote" % "2.4.2"
-//  )
-//  .dependsOn(api)
-
-
 
 
 
