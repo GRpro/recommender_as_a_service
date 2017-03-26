@@ -1,19 +1,23 @@
 package gr.ml.analytics.service
 
-trait RatingService {
+/**
+  * Current implementation works only with IDs.
+  * In future it will be extended to support
+  * type-specific recommendation defined by generic.
+  */
+trait RecommenderService {
 
   /**
     * Create new ratings for a given user
-    * @param userId id of the user who rated movies
-    // todo update
+    * @param userId id of the user who rated items
     */
   def save(userId: Int, movieId: Int, rating: Double)
 
   /**
-    * Get most relevant movies for a given user
+    * Get most relevant items for a given user
     * @param userId id of the user to get recommendations for
     * @param n number of recommendation ids to be returned
-    * @return ordered list of movie ids
+    * @return ordered list of item ids
     */
   def getTop(userId: Int, n: Int): List[Int]
 }

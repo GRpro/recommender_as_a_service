@@ -3,32 +3,25 @@ package gr.ml.analytics.service
 import com.github.tototoshi.csv._
 import gr.ml.analytics.Constants
 
-class RatingServiceImpl extends RatingService with Constants {
+class RecommenderServiceImpl extends RecommenderService with Constants {
     // creating file for current ratings
     val writer = CSVWriter.open(currentRatingsPath, append = false)
     writer.writeRow(List("userId", "movieId","rating","timestamp"))
 
   /**
-    * Create new ratings for a given user
-    *
-    * @param userId id of the user who rated movies
-    * @param movieId id of the movie rated by user
-    * @param rating users rating of the movie
+    * @inheritdoc
     */
   override def save(userId: Int, movieId: Int, rating: Double): Unit = {
     val writer = CSVWriter.open(currentRatingsPath, append = true)
-    writer.writeRow(List(userId.toString, movieId.toString,rating.toString,(System.currentTimeMillis/1000).toString))
+    writer.writeRow(List(userId.toString, movieId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
   }
 
   /**
-    * Get most relevant movies for a given user
-    * @param userId id of the user to get recommendations for
-    * @param n number of recommendation ids to be returned
-    * @return ordered list of movie ids
+    * @inheritdoc
     */
   override def getTop(userId: Int, n: Int): List[Int] = {
     val reader = CSVReader.open(predictionsPath)
-    val filtered = reader.all().filter((pr: List[String]) => pr(0).toInt == userId).last
+    val filtered = reader.all().filter((pr: List[String]) => pr.head.toInt == userId).last
     val predictedMovieIdsFromFile = filtered(1).split(":").toList.map(m => m.toInt).take(n)
     predictedMovieIdsFromFile
   }

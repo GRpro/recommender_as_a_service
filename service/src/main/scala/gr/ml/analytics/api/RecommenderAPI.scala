@@ -1,14 +1,15 @@
 package gr.ml.analytics.api
 
 import akka.actor.{Actor, ActorRefFactory}
-import gr.ml.analytics.service.RatingService
+import com.typesafe.config.Config
+import gr.ml.analytics.service.{Rating, RecommenderService}
 import spray.http.{MediaTypes, StatusCodes}
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.routing.{HttpService, _}
 
 
-class RatingsAPI(val ratingService: RatingService) extends Actor with HttpService {
+class RecommenderAPI(val ratingService: RecommenderService) extends Actor with HttpService {
 
   implicit val routingSettings = RoutingSettings.default(context)
 
@@ -21,16 +22,17 @@ class RatingsAPI(val ratingService: RatingService) extends Actor with HttpServic
     respondWithMediaType(MediaTypes.`application/json`) {
 
       path("ratings") {
-        post { // TODO shouldn't we provide parameters in request body for post?
-          parameters('userId.as[Int], 'movieId.as[Int], 'rating.as[Double]) { (userId, movieId, rating) =>
-
-            ratingService.save(userId, movieId, rating)
+        post {
+          entity(as[List[Rating]]) { ratings =>
+            ratings.foreach { rating =>
+              ratingService.save(rating.userId, rating.itemId, rating.rating)
+            }
 
             complete(StatusCodes.Created)
           }
         }
       } ~
-        path("ratings") {
+        path("recommendations") {
           get {
             parameters('userId.as[Int], 'top.as[Int]) { (userId, top) =>
               complete {

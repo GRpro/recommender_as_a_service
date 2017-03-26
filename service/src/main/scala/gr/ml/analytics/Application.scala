@@ -4,27 +4,45 @@ package gr.ml.analytics
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
 import akka.io.IO
-import gr.ml.analytics.api.{MoviesAPI, RatingsAPI}
-import gr.ml.analytics.service.{MoviesService, MoviesServiceImpl, RatingService, RatingServiceImpl}
+import com.typesafe.config.{Config, ConfigFactory}
+import gr.ml.analytics.api.{ItemsAPI, RecommenderAPI}
+import gr.ml.analytics.service.{ItemService, ItemServiceImpl, RecommenderService, RecommenderServiceImpl}
 import spray.can.Http
+
+
+trait ConfigKeys {
+  val serviceItemsListenerIface = "service.items.listener.iface"
+  val serviceItemsListenerPort = "service.items.listener.port"
+
+  val serviceRecommenderListenerIface = "service.recommender.listener.iface"
+  val serviceRecommenderListenerPort = "service.recommender.listener.port"
+}
+
 
 /**
   * Application entry point
   */
-object Application extends App {
+object Application extends App with ConfigKeys {
+
+  val config: Config = ConfigFactory.load("application.conf")
 
   // ActorSystem to host application in
   implicit val system = ActorSystem("recommendation-service")
   val log = Logging(system, getClass)
 
   // create services
-  val ratingService: RatingService = new RatingServiceImpl()
-  var moviesService: MoviesService = new MoviesServiceImpl()
+  val recommenderService: RecommenderService = new RecommenderServiceImpl()
+  var itemsService: ItemService = new ItemServiceImpl()
 
   // create apis
-  val ratingsApi = system.actorOf(Props[RatingsAPI](new RatingsAPI(ratingService)), "ratings-api")
-  val moviesApi = system.actorOf(Props[MoviesAPI](new MoviesAPI(moviesService)), "movies-api")
+  val recommenderApi = system.actorOf(Props[RecommenderAPI](new RecommenderAPI(recommenderService)), "recommender-api")
+  val moviesApi = system.actorOf(Props[ItemsAPI](new ItemsAPI(itemsService)), "movies-api")
 
-  IO(Http) ! Http.Bind(moviesApi, interface = "0.0.0.0", port = 18080)
-  IO(Http) ! Http.Bind(ratingsApi, interface = "0.0.0.0", port = 18081)
+  IO(Http) ! Http.Bind(moviesApi,
+    interface = config.getString(serviceItemsListenerIface),
+    port = config.getInt(serviceItemsListenerPort))
+
+  IO(Http) ! Http.Bind(recommenderApi,
+    interface = config.getString(serviceRecommenderListenerIface),
+    port = config.getInt(serviceRecommenderListenerPort))
 }

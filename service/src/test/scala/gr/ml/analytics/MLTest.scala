@@ -2,8 +2,7 @@ package gr.ml.analytics
 
 import java.nio.file.Paths
 
-import gr.ml.analytics.model._
-import gr.ml.analytics.service.{PredictionService, RatingService, RatingServiceImpl}
+import gr.ml.analytics.service.{RecommenderService, RecommenderServiceImpl}
 import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -18,7 +17,7 @@ class MLTest extends FlatSpec with BeforeAndAfterAllConfigMap{
   lazy val sparkSession = SparkUtil.sparkSession()
   import sparkSession.implicits._
 
-  var ratingService: RatingService = new RatingServiceImpl()
+  var ratingService: RecommenderService = new RecommenderServiceImpl()
   var predictionService: PredictionService = new PredictionService()
 
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)

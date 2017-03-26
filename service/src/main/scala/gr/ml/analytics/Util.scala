@@ -1,4 +1,4 @@
-package gr.ml.analytics.model
+package gr.ml.analytics
 
 import java.io.FileOutputStream
 import java.net.URL
