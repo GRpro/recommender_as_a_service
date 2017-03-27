@@ -1,7 +1,6 @@
 package gr.ml.analytics.service
 
 import com.github.tototoshi.csv._
-import gr.ml.analytics.Constants
 
 class RecommenderServiceImpl extends RecommenderService with Constants {
     // creating file for current ratings

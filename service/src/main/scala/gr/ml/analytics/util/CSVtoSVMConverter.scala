@@ -3,7 +3,7 @@ package gr.ml.analytics.util
 import java.io.{File, PrintWriter}
 
 import com.github.tototoshi.csv.CSVReader
-import gr.ml.analytics.Constants
+import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.PredictionService
 import org.slf4j.LoggerFactory
 

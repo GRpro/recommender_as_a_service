@@ -1,31 +1,15 @@
-package gr.ml.analytics
+package gr.ml.analytics.service.cf
 
-import java.io.File
 import java.nio.file.Paths
 
 import com.github.tototoshi.csv.CSVReader
+import gr.ml.analytics.service.Constants
+import gr.ml.analytics.util.{SparkUtil, Util}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 import org.slf4j.LoggerFactory
-
-
-/**
-  * Common constants used by service
-  */
-trait Constants {
-  val smallDatasetFileName: String = "ml-latest-small.zip"
-  val smallDatasetUrl: String = s"http://files.grouplens.org/datasets/movielens/$smallDatasetFileName"
-
-  val datasetsDirectory: String = "data"
-  val historicalRatingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString
-  val currentRatingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "current-ratings.csv").toAbsolutePath.toString
-  val predictionsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "predictions.csv").toAbsolutePath.toString
-  val modelPath: String = Paths.get(datasetsDirectory, "model").toAbsolutePath.toString
-  val bothRatingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small").toAbsolutePath.toString + File.separator + "*ratings.csv"
-}
-
 
 object PredictionService extends Constants
 

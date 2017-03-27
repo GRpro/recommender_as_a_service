@@ -3,7 +3,7 @@ package gr.ml.analytics.util
 import java.nio.file.Paths
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
-import gr.ml.analytics.Constants
+import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.PredictionService
 import org.slf4j.LoggerFactory
 
@@ -43,7 +43,7 @@ object GenresFeatureEngineering extends App with Constants {
     }
     (movieId->mapToReturn)
   })
-    // TODO caution, that's just historical/current data:
+    // TODO caution, this is not all the data:
   val allRatings = CSVReader.open(ratingsSmallPath).all().filter(p => p(0) != "userId")
 
   val ratingsWithFeatures = allRatings.map((r:List[String])=>{
