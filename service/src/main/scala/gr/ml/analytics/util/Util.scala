@@ -1,4 +1,4 @@
-package gr.ml.analytics
+package gr.ml.analytics.util
 
 import java.io.FileOutputStream
 import java.net.URL
@@ -42,6 +42,14 @@ object Util extends LazyLogging {
         val buffer = new Array[Byte](4096)
         Stream.continually(zis.read(buffer)).takeWhile(_ != -1).foreach(out.write(buffer, 0, _))
       }
+    }
+  }
+
+  //TODO remove this and all related stuff. This is temporary fix for Windows
+  def windowsWorkAround(): Unit = {
+    if (System.getProperty("os.name").contains("Windows")) {
+      val HADOOP_BIN_PATH = getClass.getClassLoader.getResource("").getPath
+      System.setProperty("hadoop.home.dir", HADOOP_BIN_PATH)
     }
   }
 }
