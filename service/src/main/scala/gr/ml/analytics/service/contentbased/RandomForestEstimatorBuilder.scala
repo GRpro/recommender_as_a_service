@@ -19,14 +19,12 @@ package gr.ml.analytics.service.contentbased
 
 import gr.ml.analytics.Constants
 import gr.ml.analytics.util.SparkUtil
-import org.apache.spark.ml.{Estimator, Model, Pipeline}
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.regression.RandomForestRegressor
 
-class RandomForestEstimatorBuilder[+A]
-
-object RandomForestEstimatorBuilder extends App with Constants{
-    def build(userId: Int): Estimator[A] ={
+object RandomForestEstimatorBuilder extends Constants {
+    def build(userId: Int): Pipeline ={
     val spark = SparkUtil.sparkSession()
     // Load and parse the data file, converting it to a DataFrame.
     val data = spark.read.format("libsvm")
@@ -48,6 +46,8 @@ object RandomForestEstimatorBuilder extends App with Constants{
     // Chain indexer and forest in a Pipeline.
     val pipeline = new Pipeline()
       .setStages(Array(featureIndexer, rf))
+
+    spark.stop()
 
     pipeline
   }

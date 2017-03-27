@@ -19,62 +19,44 @@ package gr.ml.analytics.service.contentbased
 
 import gr.ml.analytics.Constants
 import gr.ml.analytics.util.SparkUtil
-import org.apache.spark.ml.{Estimator, Model, Pipeline}
-import org.apache.spark.ml.feature.VectorIndexer
-import org.apache.spark.ml.regression.RandomForestRegressor
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql.functions.col
 
 import scala.collection.mutable
 
-object RegressionSelector extends App with Constants{
-    var rfPrecisions:mutable.MutableList[Double] = mutable.MutableList()
-    for(userId <- Range(1,10)){
-      val precision:Double = evaluatePrecisionForUser(userId, RandomForestEstimatorBuilder.build(userId))
-      if(precision != 0.0)
-        rfPrecisions += precision
+object RegressionSelector extends App with Constants {
+
+  val rfAvgPrecision = getAveragePrecision(RandomForestEstimatorBuilder.build)
+  val lrAvgPrecision = getAveragePrecision(LinearRegressionWithElasticNetBuilder.build)
+
+  def getAveragePrecision(buildPipeline: Int => Pipeline): Double = {
+    var allPrecisions: mutable.MutableList[Double] = mutable.MutableList()
+    for (userId <- Range(1, 10)) { // TODO unhardcode userId range, can use more functional style I guess
+      val precision: Double = evaluatePrecisionForUser(userId, buildPipeline(userId))
+      if (precision != 0.0 && !precision.isNaN)
+        allPrecisions += precision
     }
-  val rfAvgPrecision = rfPrecisions.sum/rfPrecisions.size
-  println("Random Forest average precision = " + rfAvgPrecision)
+    allPrecisions.sum / allPrecisions.size
+  }
 
-//    var lrPrecisions:mutable.MutableList[Double] = mutable.MutableList()
-//    for(userId <- Range(1,10)){
-//      val precision:Double = evaluatePrecisionForUser(userId, null)
-//      if(precision != 0.0)
-//        lrPrecisions += precision
-//    }
-//  val lrAvgPrecision =lrPrecisions.sum/lrPrecisions.size
-//  println("Linear Regression average precision = " + lrAvgPrecision)
-
-
-  def evaluatePrecisionForUser(userId: Int, estimator:Estimator[Model[_]]): Double ={
+  def evaluatePrecisionForUser(userId: Int, pipeline: Pipeline): Double = {
     val spark = SparkUtil.sparkSession()
     import spark.implicits._
-    // Load and parse the data file, converting it to a DataFrame.
     val data = spark.read.format("libsvm")
       .load(String.format(ratingsWithFeaturesSVMPath, userId.toString))
 
-    // Split the data into training and test sets (30% held out for testing).
     val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3))
 
-    // Train model. This also runs the indexer.
-    val model = estimator.fit(trainingData)
+    val model = pipeline.fit(trainingData)
 
-    // TODO
-    // to call method model.transform we need Estimator[Model[_]]
-    // but Pipeline thats returned by RFEB is Estimator[PipelineModel]
-    // which is not a descendent of Estimator[Model[_]] - is it true for scala??
-
-
-
-    // Make predictions.
     val predictions = model.transform(testData)
 
     val numberOfPositivelyRated = testData.filter($"label" >= 4.0).count().toInt
     val tp = predictions.orderBy(col("prediction").desc)
       .limit(numberOfPositivelyRated)
-      .filter($"label">=4.0).count()
+      .filter($"label" >= 4.0).count()
 
-    val precision = tp.toDouble/numberOfPositivelyRated
+    val precision = tp.toDouble / numberOfPositivelyRated
     precision
   }
 }
