@@ -41,4 +41,18 @@ object CSVtoSVMConverter extends App with Constants {
       .toList.sorted
     allGenres
   }
+  // Warning the "label" column will actually contain item ids!
+  def createSVMFileForAllItems(): Unit ={
+    val allGenres: List[String] = getAllGenres()
+    val csvData = CSVReader.open(moviesWithFeaturesPath).all()
+    val pw = new PrintWriter(new File(allMoviesSVMPath))
+    csvData.filter(r => r(0) != "movieId" )
+      .foreach(r=>{
+        var svmString: String = r(0)
+        for(g <- allGenres)
+          svmString += " " + (allGenres.indexOf(g)+1) +":"+ r(csvData(0).indexOf(g))
+        pw.println(svmString)
+      })
+    pw.close()
+  }
 }

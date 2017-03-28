@@ -11,7 +11,9 @@ import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 import org.slf4j.LoggerFactory
 
-object PredictionService extends Constants
+object PredictionService extends Constants {
+
+}
 
 class PredictionService {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)

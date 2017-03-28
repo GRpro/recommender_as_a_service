@@ -21,4 +21,5 @@ trait Constants {
   val ratingsWithFeaturesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-with-features.csv").toAbsolutePath.toString
   val ratingsWithFeaturesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "ratings-with-features-libsvm-user-%s.txt").toAbsolutePath.toString
   val ratingsSmallPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
+  val allMoviesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "all-movies.txt").toAbsolutePath.toString
 }
