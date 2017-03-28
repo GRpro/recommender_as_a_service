@@ -24,7 +24,6 @@ class PredictionService {
 
   def updateModel(): Unit = {
     val ratingsDF = loadRatings(PredictionService.bothRatingsPath)
-    ratingsDF.show()
 
     val als = new ALS()
       .setMaxIter(5) // TODO extract into settable fields
@@ -50,19 +49,34 @@ class PredictionService {
   }
 
   def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {
-    val toRateDS: DataFrame = getMoviesNotRatedByUser(userId)
+    val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS).orderBy(col("prediction").desc)
     val predictedMovieIds: java.util.List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collectAsList()
     predictedMovieIds
   }
 
-  def getMoviesNotRatedByUser(userId: Int): DataFrame = {
+  def getMovieIDsNotRatedByUser(userId: Int): List[Int] = {
     val reader = CSVReader.open(PredictionService.historicalRatingsPath) // TODO add support of several files, not just historical data
-    // TODO could we do it more effective that reading all the file at once? Would be still OK for larger files?
-    val movieIds = reader.all().filter((p:List[String])=>p(1)!="movieId" && p(0).toInt!=userId).map((p:List[String]) => p(1).toInt).toSet
-    val userMovieList: List[(Int, Int)] = movieIds.map(movieId => (userId, movieId)).toList
+    val allRatings = reader.all()
+    val allMovieIDs = getAllMovieIDs()
+    val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
+      .map((p:List[String]) => p(1).toInt).toSet
+    val movieIDsNotRateByUser = allMovieIDs.filter(m => !movieIdsRatedByUser.contains(m))
+    movieIDsNotRateByUser
+  }
+
+  def getUserMoviePairsToRate(userId: Int): DataFrame = {
+    val movieIDsNotRateByUser = getMovieIDsNotRatedByUser(userId)
+    val userMovieList: List[(Int, Int)] = movieIDsNotRateByUser.map(movieId => (userId, movieId))
     userMovieList.toDF("userId", "movieId")
+  }
+
+  def getAllMovieIDs(): List[Int] ={
+    val reader = CSVReader.open(PredictionService.moviesPath)
+    val allMovieIds = reader.all().filter(r=>r(0)!="movieId").map(r=>r(0).toInt)
+    reader.close()
+    allMovieIds
   }
 
   def readModel(): ALSModel ={
@@ -99,13 +113,7 @@ object PredictionServiceRunner extends App with Constants {
   val predictionService: PredictionService = new PredictionService()
   val progressLogger = LoggerFactory.getLogger("progressLogger")
 
-  //TODO remove this and oll related stuff. This is temporary fix for Windows
-  if (System.getProperty("os.name").contains("Windows")) {
-    val HADOOP_BIN_PATH = getClass.getClassLoader.getResource("").getPath
-    System.setProperty("hadoop.home.dir", HADOOP_BIN_PATH)
-  }
-
-  // download Datasets
+  Util.windowsWorkAround()
 
   Util.loadResource(smallDatasetUrl,
     Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)

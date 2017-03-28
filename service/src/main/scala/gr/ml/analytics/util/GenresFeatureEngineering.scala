@@ -14,11 +14,7 @@ object GenresFeatureEngineering extends App with Constants {
   val predictionService: PredictionService = new PredictionService()
   val progressLogger = LoggerFactory.getLogger("progressLogger")
 
-  //TODO remove this and all related stuff. This is temporary fix for Windows
-  if (System.getProperty("os.name").contains("Windows")) {
-    val HADOOP_BIN_PATH = getClass.getClassLoader.getResource("").getPath
-    System.setProperty("hadoop.home.dir", HADOOP_BIN_PATH)
-  }
+  Util.windowsWorkAround()
 
   Util.loadResource(smallDatasetUrl,
     Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
@@ -60,9 +56,8 @@ object GenresFeatureEngineering extends App with Constants {
   ratingsWriter.close()
 
   def getMoviesWithFeatures(): List[ListMap[String, String]] ={
-    val moviesWithFeatures = allMovies.map((p:List[String]) => { // TODO collect as a map with movieId as a key
-    val movieId = p(0)
-      var mapToReturn = ListMap("title" -> p(1)) // TODO do I need title here?
+    val moviesWithFeatures = allMovies.map((p:List[String]) => {
+      var mapToReturn = ListMap("movieId" -> p(0))
       val movieGenres = p(2).replace("|", ":").split(":")
       for(genre <- allGenres) {
         val containsThisGenre = if(movieGenres.contains(genre)) 1 else 0
@@ -74,9 +69,9 @@ object GenresFeatureEngineering extends App with Constants {
   }
 
   def getMoviesWithFeaturesById(): List[(String, ListMap[String, String])] ={
-    val moviesWithFeaturesById = allMovies.map((p:List[String]) => { // TODO collect as a map with movieId as a key
+    val moviesWithFeaturesById = allMovies.map((p:List[String]) => {
     val movieId = p(0)
-      var mapToReturn = ListMap("title" -> p(1)) // TODO do I need title here?
+      var mapToReturn = ListMap("movieId" -> movieId)
       val movieGenres = p(2).replace("|", ":").split(":")
       for(genre <- allGenres) {
         val containsThisGenre = if(movieGenres.contains(genre)) 1 else 0

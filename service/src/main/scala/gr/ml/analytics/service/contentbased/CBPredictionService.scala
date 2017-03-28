@@ -4,21 +4,31 @@ import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.PredictionService
 import gr.ml.analytics.util.SparkUtil
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.udf
 
 // TODO refactor this class
 object CBPredictionService extends Constants{
+  val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
+
   def main(args: Array[String]): Unit ={
+
+    //CSVtoSVMConverter.createSVMFileForAllItems()
 
     val userId: Int = 1
 //    val pipeline = RandomForestEstimatorBuilder.build(userId) // TODO RF estimator needs to index all features first! Cannot pass random data in it!
     val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
 
     val spark = SparkUtil.sparkSession()
+    import spark.implicits._
     val ratedItems = spark.read.format("libsvm")
       .load(String.format(ratingsWithFeaturesSVMPath, userId.toString))
     val notRatedItems = getItemsNotRateByUserSVM(userId)
     val model = pipeline.fit(ratedItems)
     val predictions = model.transform(notRatedItems)
+    predictions.sort($"prediction".desc).show()
+
+    val predictedItemIds = predictions.sort($"prediction".desc).select("label").map(row => row.getDouble(0).toInt).collectAsList()
 
     spark.stop()
   }
@@ -26,13 +36,9 @@ object CBPredictionService extends Constants{
   def getItemsNotRateByUserSVM(userId: Int): DataFrame ={
     val spark = SparkUtil.sparkSession()
     import spark.implicits._
-    val itemIdsNotRatedByUser = new PredictionService().getMoviesNotRatedByUser(userId)
-    val list = itemIdsNotRatedByUser.select("movieId").rdd.map(r=>r(0)).collect()
-    val notRatedItems = spark.read.format("libsvm") // TODO get really not rated items my the user
-      .load(allMoviesSVMPath)
-    val filtered = notRatedItems.filter($"label".isin(Seq(1,2,3))).show()
-    spark.stop()
+    val doubleItemIDsNotRatedByUser = new PredictionService().getMovieIDsNotRatedByUser(userId).map(i=>i.toDouble)
+    val allItems = spark.read.format("libsvm").load(allMoviesSVMPath)
+    val notRatedItems = allItems.filter($"label".isin(doubleItemIDsNotRatedByUser:_*))
     notRatedItems
-
   }
 }
