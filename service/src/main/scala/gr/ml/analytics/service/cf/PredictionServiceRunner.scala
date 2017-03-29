@@ -2,7 +2,7 @@ package gr.ml.analytics.service.cf
 
 import java.nio.file.Paths
 
-import com.github.tototoshi.csv.CSVReader
+import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.util.{SparkUtil, Util}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
@@ -19,7 +19,7 @@ class PredictionService {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
 
-  lazy val sparkSession = SparkUtil.sparkSession()
+  val sparkSession = SparkUtil.sparkSession()
   import sparkSession.implicits._
 
   def updateModel(): Unit = {
@@ -36,16 +36,36 @@ class PredictionService {
     writeModel(model)
   }
 
-  def updatePredictionsForUser(userId: Int): java.util.List[Int] = {
-    val predictedMovieIds: java.util.List[Int] = calculatePredictedIdsForUser(userId, readModel())
-    persistPredictions(userId, predictedMovieIds)
-    predictedMovieIds
+  def updatePredictionsForUser(userId: Int): DataFrame = {
+    val predictions: DataFrame = calculatePredictionsForUser(userId, readModel())
+    persistPredictionsForUser(userId, predictions)
+    predictions
   }
 
-  def persistPredictions(userId: Int, predictedMovieIds: java.util.List[Int]): Unit = {
+  def persistPredictedIdsForUser(userId: Int, predictedMovieIds: java.util.List[Int]): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(PredictionService.predictionsPath, append = true)
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
+  }
+
+  def persistPredictionsForUser(userId: Int, predictions: DataFrame): Unit = {
+    val ratingsHeaderWriter = CSVWriter.open(String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString), append = false)
+    ratingsHeaderWriter.writeRow(List("userId","movieId","prediction"))
+    ratingsHeaderWriter.close()
+
+    val ratingsWriter = CSVWriter.open(String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString), append = true)
+    val predictionsList = predictions.rdd.map(r=>List(r(0),r(1),r(2))).collect()
+    ratingsWriter.writeAll(predictionsList)
+    ratingsWriter.close()
+  }
+
+  def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
+    val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
+    import org.apache.spark.sql.functions._
+    val predictions = model.transform(toRateDS)
+      .filter(not(isnan($"prediction")))
+      .orderBy(col("prediction").desc)
+    predictions
   }
 
   def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {

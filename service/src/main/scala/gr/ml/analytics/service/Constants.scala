@@ -22,4 +22,7 @@ trait Constants {
   val ratingsWithFeaturesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "ratings-with-features-libsvm-user-%s.txt").toAbsolutePath.toString
   val ratingsSmallPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
   val allMoviesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "all-movies.txt").toAbsolutePath.toString
+  val collaborativePredictionsForUserPath: String = Paths.get(datasetsDirectory, "predictions", "collaborative-predictions", "collaborative-predictions-user-%s.csv").toAbsolutePath.toString
+  val contentBasedPredictionsForUserPath: String = Paths.get(datasetsDirectory, "predictions", "content-based-predictions","content-based-predictions-user-%s.csv").toAbsolutePath.toString
+  val finalPredictionsForUserPath: String = Paths.get(datasetsDirectory, "predictions", "final-predictions", "final-predictions-user-%s.csv").toAbsolutePath.toString
 }
