@@ -51,7 +51,9 @@ class PredictionService {
   def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
-    val predictions = model.transform(toRateDS).orderBy(col("prediction").desc)
+    val predictions = model.transform(toRateDS)
+      .filter(not(isnan($"prediction")))
+      .orderBy(col("prediction").desc)
     val predictedMovieIds: java.util.List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collectAsList()
     predictedMovieIds
   }
