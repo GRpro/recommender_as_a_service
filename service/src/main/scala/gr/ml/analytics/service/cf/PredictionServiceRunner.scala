@@ -38,7 +38,7 @@ class PredictionService {
 
   def updatePredictionsForUser(userId: Int): DataFrame = {
     val predictions: DataFrame = calculatePredictionsForUser(userId, readModel())
-    persistPredictionsForUser(userId, predictions)
+    persistPredictionsForUser(userId, predictions, String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString))
     predictions
   }
 
@@ -48,15 +48,15 @@ class PredictionService {
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
   }
 
-  def persistPredictionsForUser(userId: Int, predictions: DataFrame): Unit = {
-    val ratingsHeaderWriter = CSVWriter.open(String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString), append = false)
-    ratingsHeaderWriter.writeRow(List("userId","movieId","prediction"))
-    ratingsHeaderWriter.close()
+  def persistPredictionsForUser(userId: Int, predictions: DataFrame, path: String): Unit = {
+    val predictionsHeaderWriter = CSVWriter.open(path, append = false)
+    predictionsHeaderWriter.writeRow(List("userId","movieId","prediction")) // TODO change to "itemId"
+    predictionsHeaderWriter.close()
 
-    val ratingsWriter = CSVWriter.open(String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString), append = true)
-    val predictionsList = predictions.rdd.map(r=>List(r(0),r(1),r(2))).collect()
-    ratingsWriter.writeAll(predictionsList)
-    ratingsWriter.close()
+    val predictionsWriter = CSVWriter.open(String.format(path), append = true)
+    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("movieId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
+    predictionsWriter.writeAll(predictionsList)
+    predictionsWriter.close()
   }
 
   def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
@@ -79,8 +79,14 @@ class PredictionService {
   }
 
   def getMovieIDsNotRatedByUser(userId: Int): List[Int] = {
-    val reader = CSVReader.open(PredictionService.historicalRatingsPath) // TODO add support of several files, not just historical data
-    val allRatings = reader.all()
+    val historicalReader = CSVReader.open(PredictionService.historicalRatingsPath)
+    val historicalRatings = historicalReader.all()
+    historicalReader.close()
+    val currentReader = CSVReader.open(PredictionService.currentRatingsPath)
+    val currentRatings = currentReader.all()
+    currentReader.close()
+    val allRatings = historicalRatings ++ currentRatings
+
     val allMovieIDs = getAllMovieIDs()
     val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
       .map((p:List[String]) => p(1).toInt).toSet
@@ -159,7 +165,7 @@ object PredictionServiceRunner extends App with Constants {
   while(true) {
     Thread.sleep(1000)
     tryAndLog(predictionService.updateModel(), "Updating model")
-    tryAndLog(predictionService.updatePredictionsForUser(0), "Updating predictions for User " + 0) // TODO add method getUserIdsForPrediction (return all unique user ids from current-ratings.csv)
+    tryAndLog(predictionService.updatePredictionsForUser(1), "Updating predictions for User " + 1) // TODO add method getUserIdsForPrediction (return all unique user ids from current-ratings.csv)
   }
 
 }
