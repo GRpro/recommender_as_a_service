@@ -1,7 +1,5 @@
 package gr.ml.analytics.service.cf
 
-import java.nio.file.Paths
-
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.util.{SparkUtil, Util}
@@ -9,7 +7,6 @@ import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
-import org.slf4j.LoggerFactory
 
 object PredictionService extends Constants {
 
@@ -132,6 +129,12 @@ class PredictionService {
     ratingsDF
   }
 
+  def getUserIdsForPrediction(): Set[Int] ={
+    val reader = CSVReader.open(PredictionService.currentRatingsPath)
+    val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
+    reader.close()
+    allUserIds
+  }
 }
 
 
@@ -139,33 +142,19 @@ class PredictionService {
 object PredictionServiceRunner extends App with Constants {
 
   val predictionService: PredictionService = new PredictionService()
-  val progressLogger = LoggerFactory.getLogger("progressLogger")
 
-  Util.windowsWorkAround()
-
-  Util.loadResource(smallDatasetUrl,
-    Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
-  Util.unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath,
-    Paths.get(datasetsDirectory).toAbsolutePath)
-
-  def tryAndLog(method: => Unit, message: String): Unit ={
-    progressLogger.info(message)
-    try {
-      method
-    } catch {
-      case _: Exception => progressLogger.error("Error during " + message)
-    }
-  }
+  Util.windowsWorkAround() // DO we need it here?
 
   /*
-
-  Periodically run batch job which updates model
-
+    Periodically run batch job which updates model
    */
   while(true) {
     Thread.sleep(1000)
-    tryAndLog(predictionService.updateModel(), "Updating model")
-    tryAndLog(predictionService.updatePredictionsForUser(1), "Updating predictions for User " + 1) // TODO add method getUserIdsForPrediction (return all unique user ids from current-ratings.csv)
+    Util.tryAndLog(predictionService.updateModel(), "Collaborative:: Updating model")
+    val userIds: Set[Int] = predictionService.getUserIdsForPrediction()
+    for(userId <- userIds){
+      Util.tryAndLog(predictionService.updatePredictionsForUser(userId), "Collaborative:: Updating predictions for User " + userId)
+    }
   }
 
 }

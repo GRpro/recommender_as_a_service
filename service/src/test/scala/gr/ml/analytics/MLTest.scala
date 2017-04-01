@@ -32,10 +32,8 @@ class MLTest extends FlatSpec with BeforeAndAfterAllConfigMap{
   val currentRatingsPath = Paths.get(datasetsDirectory, "ml-latest-small", "current-ratings.csv").toAbsolutePath.toString
 
   override def beforeAll(configMap: ConfigMap): Unit = {
-    Util.loadResource(smallDatasetUrl,
-      Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
-    Util.unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath,
-      Paths.get(datasetsDirectory).toAbsolutePath)
+    Util.windowsWorkAround()
+    Util.loadAndUnzip()
 
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(currentRatingsPath)

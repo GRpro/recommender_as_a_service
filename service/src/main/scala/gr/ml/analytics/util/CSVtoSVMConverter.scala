@@ -14,11 +14,14 @@ object CSVtoSVMConverter extends App with Constants {
 
   Util.windowsWorkAround()
 
-  for(userId <- Range(1,10)){ // TODO unhardcode UserIds
-    createSVMFileForUser(userId)
+  def createSVMRatingFilesForCurrentUsers(): Unit ={
+    val userIds = new PredictionService().getUserIdsForPrediction()
+    for(userId <- userIds){
+      createSVMRatingsFileForUser(userId)
+    }
   }
 
-  def createSVMFileForUser(userId:Int): Unit ={
+  def createSVMRatingsFileForUser(userId:Int): Unit ={
     val allGenres: List[String] = getAllGenres()
     val csvData = CSVReader.open(ratingsWithFeaturesPath).all()
     val pw = new PrintWriter(new File(ratingsWithFeaturesSVMPath + "-user-" + userId + ".txt"))

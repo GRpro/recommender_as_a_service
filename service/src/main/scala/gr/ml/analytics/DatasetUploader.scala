@@ -25,10 +25,7 @@ import scala.concurrent.{Await, Future}
 object DatasetUploader extends App with Constants {
   val config: Config = ConfigFactory.load("application.conf")
 
-  Util.loadResource(smallDatasetUrl,
-    Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
-  Util.unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath,
-    Paths.get(datasetsDirectory).toAbsolutePath)
+    //  Util.loadAndUnzip() TODO Grisha, do we need it here?
 
   val reader = CSVReader.open(PredictionService.historicalRatingsPath)
 
