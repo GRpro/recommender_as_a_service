@@ -26,9 +26,9 @@ object CBPredictionService extends Constants{
     val notRatedItems = getItemsNotRateByUserSVM(userId)
     val model = pipeline.fit(ratedItems)
     val predictions = model.transform(notRatedItems)
-    predictions.sort($"prediction".desc).show()
-
-    val predictedItemIds = predictions.sort($"prediction".desc).select("label").map(row => row.getDouble(0).toInt).collectAsList()
+      .select($"label".as("movieId"), $"prediction")
+      .sort($"prediction".desc)
+    new PredictionService().persistPredictionsForUser(userId, predictions, String.format(contentBasedPredictionsForUserPath, userId.toString))
 
     spark.stop()
   }

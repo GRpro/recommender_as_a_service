@@ -2,7 +2,7 @@ package gr.ml.analytics.service.cf
 
 import java.nio.file.Paths
 
-import com.github.tototoshi.csv.CSVReader
+import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.util.{SparkUtil, Util}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
@@ -19,7 +19,7 @@ class PredictionService {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
 
-  lazy val sparkSession = SparkUtil.sparkSession()
+  val sparkSession = SparkUtil.sparkSession()
   import sparkSession.implicits._
 
   def updateModel(): Unit = {
@@ -36,29 +36,57 @@ class PredictionService {
     writeModel(model)
   }
 
-  def updatePredictionsForUser(userId: Int): java.util.List[Int] = {
-    val predictedMovieIds: java.util.List[Int] = calculatePredictedIdsForUser(userId, readModel())
-    persistPredictions(userId, predictedMovieIds)
-    predictedMovieIds
+  def updatePredictionsForUser(userId: Int): DataFrame = {
+    val predictions: DataFrame = calculatePredictionsForUser(userId, readModel())
+    persistPredictionsForUser(userId, predictions, String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString))
+    predictions
   }
 
-  def persistPredictions(userId: Int, predictedMovieIds: java.util.List[Int]): Unit = {
+  def persistPredictedIdsForUser(userId: Int, predictedMovieIds: List[Int]): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(PredictionService.predictionsPath, append = true)
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
   }
 
-  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {
+  def persistPredictionsForUser(userId: Int, predictions: DataFrame, path: String): Unit = {
+    val predictionsHeaderWriter = CSVWriter.open(path, append = false)
+    predictionsHeaderWriter.writeRow(List("userId","movieId","prediction")) // TODO change to "itemId"
+    predictionsHeaderWriter.close()
+
+    val predictionsWriter = CSVWriter.open(String.format(path), append = true)
+    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("movieId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
+    predictionsWriter.writeAll(predictionsList)
+    predictionsWriter.close()
+  }
+
+  def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
-    val predictions = model.transform(toRateDS).orderBy(col("prediction").desc)
-    val predictedMovieIds: java.util.List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collectAsList()
+    val predictions = model.transform(toRateDS)
+      .filter(not(isnan($"prediction")))
+      .orderBy(col("prediction").desc)
+    predictions
+  }
+
+  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): List[Int] = {
+    val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
+    import org.apache.spark.sql.functions._
+    val predictions = model.transform(toRateDS)
+      .filter(not(isnan($"prediction")))
+      .orderBy(col("prediction").desc)
+    val predictedMovieIds: List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collect().toList
     predictedMovieIds
   }
 
   def getMovieIDsNotRatedByUser(userId: Int): List[Int] = {
-    val reader = CSVReader.open(PredictionService.historicalRatingsPath) // TODO add support of several files, not just historical data
-    val allRatings = reader.all()
+    val historicalReader = CSVReader.open(PredictionService.historicalRatingsPath)
+    val historicalRatings = historicalReader.all()
+    historicalReader.close()
+    val currentReader = CSVReader.open(PredictionService.currentRatingsPath)
+    val currentRatings = currentReader.all()
+    currentReader.close()
+    val allRatings = historicalRatings ++ currentRatings
+
     val allMovieIDs = getAllMovieIDs()
     val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
       .map((p:List[String]) => p(1).toInt).toSet
@@ -137,7 +165,7 @@ object PredictionServiceRunner extends App with Constants {
   while(true) {
     Thread.sleep(1000)
     tryAndLog(predictionService.updateModel(), "Updating model")
-    tryAndLog(predictionService.updatePredictionsForUser(0), "Updating predictions for User " + 0) // TODO add method getUserIdsForPrediction (return all unique user ids from current-ratings.csv)
+    tryAndLog(predictionService.updatePredictionsForUser(1), "Updating predictions for User " + 1) // TODO add method getUserIdsForPrediction (return all unique user ids from current-ratings.csv)
   }
 
 }

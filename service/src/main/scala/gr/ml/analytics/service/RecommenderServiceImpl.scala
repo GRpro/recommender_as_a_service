@@ -6,6 +6,7 @@ class RecommenderServiceImpl extends RecommenderService with Constants {
     // creating file for current ratings
     val writer = CSVWriter.open(currentRatingsPath, append = false)
     writer.writeRow(List("userId", "movieId","rating","timestamp"))
+    writer.close()
 
   /**
     * @inheritdoc
@@ -22,6 +23,7 @@ class RecommenderServiceImpl extends RecommenderService with Constants {
     val reader = CSVReader.open(predictionsPath)
     val filtered = reader.all().filter((pr: List[String]) => pr.head.toInt == userId).last
     val predictedMovieIdsFromFile = filtered(1).split(":").toList.map(m => m.toInt).take(n)
+    reader.close()
     predictedMovieIdsFromFile
   }
 }
