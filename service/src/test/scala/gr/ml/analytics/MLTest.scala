@@ -63,10 +63,10 @@ class MLTest extends FlatSpec with BeforeAndAfterAllConfigMap{
 
     val model = als.fit(ratingsDF)
     predictionService.writeModel(model)
-    val predictions1 = predictionService.calculatePredictedIdsForUser(userId, model)
-    val predictions2 = predictionService.calculatePredictedIdsForUser(userId, predictionService.readModel())
+    val predictions1: List[Int] = predictionService.calculatePredictedIdsForUser(userId, model)
+    val predictions2: List[Int] = predictionService.calculatePredictedIdsForUser(userId, predictionService.readModel())
     // TODO replace with assert:
-    println(predictions1.stream().limit(10).toArray.toList.equals(predictions2.stream().limit(10).toArray.toList))
+    println(predictions1.take(10).toArray.toList.equals(predictions2.take(10).toArray.toList))
   }
 
   "Whole prediction flow" should "run without errors" in {

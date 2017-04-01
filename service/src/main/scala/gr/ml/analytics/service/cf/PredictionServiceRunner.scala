@@ -42,7 +42,7 @@ class PredictionService {
     predictions
   }
 
-  def persistPredictedIdsForUser(userId: Int, predictedMovieIds: java.util.List[Int]): Unit = {
+  def persistPredictedIdsForUser(userId: Int, predictedMovieIds: List[Int]): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(PredictionService.predictionsPath, append = true)
     writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
@@ -68,13 +68,13 @@ class PredictionService {
     predictions
   }
 
-  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): java.util.List[Int] = {
+  def calculatePredictedIdsForUser(userId: Int, model: ALSModel): List[Int] = {
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
       .filter(not(isnan($"prediction")))
       .orderBy(col("prediction").desc)
-    val predictedMovieIds: java.util.List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collectAsList()
+    val predictedMovieIds: List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collect().toList
     predictedMovieIds
   }
 
