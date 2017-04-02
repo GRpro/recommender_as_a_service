@@ -1,5 +1,7 @@
 package gr.ml.analytics.service.contentbased
 
+import java.io.File
+
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.PredictionService
 import gr.ml.analytics.util.{CSVtoSVMConverter, GenresFeatureEngineering, SparkUtil, Util}
@@ -59,6 +61,7 @@ object CBPredictionService extends Constants {
     val predictions = readModel.transform(notRatedItems)
       .select($"label".as("movieId"), $"prediction")
       .sort($"prediction".desc)
+    new File(PredictionService.contentBasedPredictionsDirectoryPath).mkdirs()
     new PredictionService().persistPredictionsForUser(userId, predictions, String.format(contentBasedPredictionsForUserPath, userId.toString))
   }
 }

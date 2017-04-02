@@ -1,5 +1,7 @@
 package gr.ml.analytics.service.cf
 
+import java.io.File
+
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.util.{SparkUtil, Util}
@@ -35,6 +37,7 @@ class PredictionService {
 
   def updatePredictionsForUser(userId: Int): DataFrame = {
     val predictions: DataFrame = calculatePredictionsForUser(userId, readModel())
+    new File(PredictionService.collaborativePredictionsDirectoryPath).mkdirs()
     persistPredictionsForUser(userId, predictions, String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString))
     predictions
   }
@@ -76,13 +79,9 @@ class PredictionService {
   }
 
   def getMovieIDsNotRatedByUser(userId: Int): List[Int] = {
-    val historicalReader = CSVReader.open(PredictionService.historicalRatingsPath)
-    val historicalRatings = historicalReader.all()
-    historicalReader.close()
-    val currentReader = CSVReader.open(PredictionService.currentRatingsPath)
-    val currentRatings = currentReader.all()
-    currentReader.close()
-    val allRatings = historicalRatings ++ currentRatings
+    val ratingsReader = CSVReader.open(PredictionService.ratingsPath)
+    val allRatings = ratingsReader.all()
+    ratingsReader.close()
 
     val allMovieIDs = getAllMovieIDs()
     val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
@@ -130,10 +129,11 @@ class PredictionService {
   }
 
   def getUserIdsForPrediction(): Set[Int] ={
-    val reader = CSVReader.open(PredictionService.currentRatingsPath)
-    val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
-    reader.close()
-    allUserIds
+    //    val reader = CSVReader.open(PredictionService.ratingsPath)
+    //    val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
+    //    reader.close()
+    //    allUserIds
+    Set(1,2,3,4,5) // TODO unhardcode!
   }
 }
 

@@ -3,16 +3,12 @@ package gr.ml.analytics.service
 import com.github.tototoshi.csv._
 
 class RecommenderServiceImpl extends RecommenderService with Constants {
-    // creating file for current ratings
-    val writer = CSVWriter.open(currentRatingsPath, append = false)
-    writer.writeRow(List("userId", "movieId","rating","timestamp"))
-    writer.close()
 
   /**
     * @inheritdoc
     */
   override def save(userId: Int, movieId: Int, rating: Double): Unit = {
-    val writer = CSVWriter.open(currentRatingsPath, append = true)
+    val writer = CSVWriter.open(ratingsPath, append = true)
     writer.writeRow(List(userId.toString, movieId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
     // TODO ADD THIS RATING TO ratings-with-features files for content-based flow
   }

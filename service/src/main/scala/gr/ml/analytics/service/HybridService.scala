@@ -1,17 +1,22 @@
 package gr.ml.analytics.service
 
+import java.io.File
+
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.cf.PredictionService
 import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressionWithElasticNetBuilder}
-import gr.ml.analytics.util.{GenresFeatureEngineering, Util}
+import gr.ml.analytics.util.{CSVtoSVMConverter, GenresFeatureEngineering, Util}
 
 object HybridService extends App{
   val collaborativeWeight = 1.0
   val contentBasedWeight = 1.0
 
   Util.windowsWorkAround()
-  Util.loadAndUnzip()
-  GenresFeatureEngineering.createAllRatingsWithFeaturesFile()
+//  Util.loadAndUnzip()
+
+  // TODO add checking if file exists.
+  //  GenresFeatureEngineering.createAllRatingsWithFeaturesFile() // TODO uncomment!
+  CSVtoSVMConverter.createSVMRatingFilesForCurrentUsers()
 
   val userIds = new PredictionService().getUserIdsForPrediction()
 
@@ -32,6 +37,7 @@ object HybridService extends App{
   }
 
   def combinePredictionsForUser(userId: Int): Unit ={
+    new File(PredictionService.finalPredictionsDirectoryPath).mkdirs()
     val collaborativeReader = CSVReader.open(String.format(PredictionService.collaborativePredictionsForUserPath, userId.toString))
     val collaborativePredictions = collaborativeReader.all().filter(l=>l(0)!="userId")
     collaborativeReader.close()

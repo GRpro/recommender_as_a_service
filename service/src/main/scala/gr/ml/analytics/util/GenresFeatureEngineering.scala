@@ -35,7 +35,11 @@ object GenresFeatureEngineering extends App with Constants {
     movieHeaderWriter.writeRow(moviesWithFeatures(0).map(t=>t._1).toList)
     movieHeaderWriter.close()
     val movieWriter = CSVWriter.open(moviesWithFeaturesPath, append = true)
-    moviesWithFeatures.foreach(m => movieWriter.writeRow(m.map(t=>t._2).toList))
+    moviesWithFeatures.foreach(m => {
+      val list = m.map(t=>t._2).toList
+      movieWriter.writeRow(list)
+      println("createAllMoviesWithFeaturesFile :: MovieId = " + list(0))
+    })
     movieWriter.close()
   }
 
@@ -47,6 +51,7 @@ object GenresFeatureEngineering extends App with Constants {
     val ratingsWithFeatures = allRatings.map((r:List[String])=>{
       val movieId = r(1)
       var mapToReturn = ListMap("userId" -> r(0), "movieId" -> movieId, "rating" -> r(2))
+      println("createAllRatingsWithFeaturesFile :: UserID = " + r(0))
       mapToReturn ++ moviesWithFeaturesById.toMap.get(movieId).get
     })
     ratingsReader.close()
@@ -61,6 +66,7 @@ object GenresFeatureEngineering extends App with Constants {
   def getMoviesWithFeatures(): List[ListMap[String, String]] ={
     val allMovies = getAllMovies()
     val moviesWithFeatures = allMovies.map((p:List[String]) => {
+      println("getMoviesWithFeatures :: MovieID = " + p(0))
       var mapToReturn = ListMap("movieId" -> p(0))
       val movieGenres = p(2).replace("|", ":").split(":")
       val allGenres: List[String] = getAllGenres()
@@ -84,6 +90,7 @@ object GenresFeatureEngineering extends App with Constants {
         val containsThisGenre = if (movieGenres.contains(genre)) 1 else 0
         mapToReturn += (genre -> containsThisGenre.toString)
       }
+      println("getMoviesWithFeaturesById :: MovieId = " + movieId)
       (movieId -> mapToReturn)
     })
     moviesWithFeaturesById
