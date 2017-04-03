@@ -5,6 +5,8 @@ import java.io.File
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.cf.PredictionService
 import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressionWithElasticNetBuilder}
+import gr.ml.analytics.util.GenresFeatureEngineering.ratingsWithFeaturesPath
+import gr.ml.analytics.util.GenresFeatureEngineering.moviesWithFeaturesPath
 import gr.ml.analytics.util.{CSVtoSVMConverter, GenresFeatureEngineering, Util}
 
 object HybridService extends App{
@@ -12,11 +14,15 @@ object HybridService extends App{
   val contentBasedWeight = 1.0
 
   Util.windowsWorkAround()
-//  Util.loadAndUnzip()
+  Util.loadAndUnzip()
 
-  // TODO add checking if file exists.
-  //  GenresFeatureEngineering.createAllRatingsWithFeaturesFile() // TODO uncomment!
-  CSVtoSVMConverter.createSVMRatingFilesForCurrentUsers()
+  if(!(new File(ratingsWithFeaturesPath).exists()))
+    GenresFeatureEngineering.createAllRatingsWithFeaturesFile()
+  if(!(new File(moviesWithFeaturesPath).exists()))
+    GenresFeatureEngineering.createAllMoviesWithFeaturesFile()
+
+  CSVtoSVMConverter.createSVMRatingFilesForAllUsers()
+  CSVtoSVMConverter.createSVMFileForAllItems()
 
   val userIds = new PredictionService().getUserIdsForPrediction()
 

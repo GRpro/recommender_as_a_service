@@ -5,7 +5,6 @@ import java.io.{File, PrintWriter}
 import com.github.tototoshi.csv.CSVReader
 import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.PredictionService
-import gr.ml.analytics.util.CSVtoSVMConverter.libsvmDirectory
 import org.slf4j.LoggerFactory
 
 object CSVtoSVMConverter extends App with Constants {
@@ -15,8 +14,8 @@ object CSVtoSVMConverter extends App with Constants {
 
   Util.windowsWorkAround()
 
-  def createSVMRatingFilesForCurrentUsers(): Unit ={
-    val userIds = new PredictionService().getUserIdsForPrediction()
+  def createSVMRatingFilesForAllUsers(): Unit ={
+    val userIds = new PredictionService().getAllUserIds()
     for(userId <- userIds){
       createSVMRatingsFileForUser(userId)
     }
@@ -24,7 +23,8 @@ object CSVtoSVMConverter extends App with Constants {
 
   def createSVMRatingsFileForUser(userId:Int): Unit ={
     val allGenres: List[String] = getAllGenres()
-    val csvData = CSVReader.open(ratingsWithFeaturesPath).all()
+    val csvReader = CSVReader.open(ratingsWithFeaturesPath)
+    val csvData = csvReader.all()
     new File(libsvmDirectoryPath).mkdirs()
     val pw = new PrintWriter(new File(String.format(ratingsWithFeaturesSVMPath, userId.toString)))
     csvData.filter(r => r(0) == userId.toString)
@@ -35,6 +35,7 @@ object CSVtoSVMConverter extends App with Constants {
         pw.println(svmString)
       })
     pw.close()
+    csvReader.close()
   }
 
   def getAllGenres(): List[String] ={

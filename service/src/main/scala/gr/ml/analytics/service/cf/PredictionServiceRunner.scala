@@ -135,6 +135,14 @@ class PredictionService {
     //    allUserIds
     Set(1,2,3,4,5) // TODO unhardcode!
   }
+
+  def getAllUserIds(): Set[Int] ={
+        val reader = CSVReader.open(PredictionService.ratingsPath)
+        val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
+        reader.close()
+        allUserIds
+  }
+
 }
 
 
