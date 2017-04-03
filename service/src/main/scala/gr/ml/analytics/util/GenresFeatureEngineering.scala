@@ -95,4 +95,15 @@ object GenresFeatureEngineering extends App with Constants {
     })
     moviesWithFeaturesById
   }
+
+  def addRatingToRatingsWithFeatures(userId: Int, movieId: Int, rating: Double): Unit ={
+    val moviesWithFeaturesReader = CSVReader.open(moviesWithFeaturesPath)
+    val movieIdAndFeatures = moviesWithFeaturesReader.all().filter(l=>l(0) == movieId.toString).head
+    var listToPersist = List(userId.toString, rating.toString)
+    listToPersist ++= movieIdAndFeatures
+    moviesWithFeaturesReader.close()
+    val ratingsWithFeaturesWriter = CSVWriter.open(ratingsWithFeaturesPath, append = true)
+    ratingsWithFeaturesWriter.writeRow(listToPersist)
+    ratingsWithFeaturesWriter.close()
+  }
 }
