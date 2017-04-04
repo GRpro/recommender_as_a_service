@@ -1,13 +1,9 @@
 package gr.ml.analytics
 
-import java.nio.file.Paths
-
 import akka.actor.ActorSystem
 import com.github.tototoshi.csv.CSVReader
 import com.typesafe.config.{Config, ConfigFactory}
 import gr.ml.analytics.service.{Constants, Rating}
-import gr.ml.analytics.service.cf.PredictionService
-import gr.ml.analytics.util.Util
 import spray.client.pipelining._
 import spray.http._
 import spray.httpx.SprayJsonSupport._
@@ -27,7 +23,7 @@ object DatasetUploader extends App with Constants {
 
     //  Util.loadAndUnzip() TODO Grisha, do we need it here?
 
-  val reader = CSVReader.open(PredictionService.historicalRatingsPath)
+  val reader = CSVReader.open(ratingsPath)
 
   val ratings = reader.toStreamWithHeaders.flatMap(map => {
     for {

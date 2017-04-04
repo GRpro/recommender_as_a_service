@@ -2,14 +2,13 @@ package gr.ml.analytics.util
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.service.cf.PredictionService
+import gr.ml.analytics.service.cf.CFPredictionService
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.ListMap
 
 object GenresFeatureEngineering extends App with Constants {
 
-  val predictionService: PredictionService = new PredictionService()
   val progressLogger = LoggerFactory.getLogger("progressLogger")
 
   def getAllMovies(): List[List[String]] ={

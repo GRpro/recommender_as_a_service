@@ -3,8 +3,8 @@ package gr.ml.analytics.service.contentbased
 import java.io.File
 
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.service.cf.PredictionService
-import gr.ml.analytics.util.{CSVtoSVMConverter, GenresFeatureEngineering, SparkUtil, Util}
+import gr.ml.analytics.service.cf.CFPredictionService
+import gr.ml.analytics.util.{SparkUtil, Util}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -25,7 +25,7 @@ object CBPredictionService extends Constants {
 //    CSVtoSVMConverter.createSVMRatingFilesForCurrentUsers()
 
     Util.windowsWorkAround()
-    val userIds = new PredictionService().getUserIdsFromLastNRatings(1000)
+    val userIds = CFPredictionService.getUserIdsFromLastNRatings(1000)
 
     for(userId <- userIds){
       val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
@@ -38,7 +38,7 @@ object CBPredictionService extends Constants {
   def getItemsNotRateByUserSVM(userId: Int): DataFrame = {
     val spark = SparkUtil.sparkSession()
     import spark.implicits._
-    val doubleItemIDsNotRatedByUser = new PredictionService().getMovieIDsNotRatedByUser(userId).map(i => i.toDouble)
+    val doubleItemIDsNotRatedByUser = CFPredictionService.getMovieIDsNotRatedByUser(userId).map(i => i.toDouble)
     val allItems = spark.read.format("libsvm").load(allMoviesSVMPath)
     val notRatedItems = allItems.filter($"label".isin(doubleItemIDsNotRatedByUser: _*))
     notRatedItems
@@ -49,19 +49,19 @@ object CBPredictionService extends Constants {
     val ratedItems = spark.read.format("libsvm")
       .load(String.format(ratingsWithFeaturesSVMPath, userId.toString))
     val model = pipeline.fit(ratedItems)
-    model.write.overwrite().save(String.format(PredictionService.contentBasedModelForUserPath, userId.toString))
+    model.write.overwrite().save(String.format(contentBasedModelForUserPath, userId.toString))
     spark.stop()
   }
 
   def updatePredictionsForUser(userId: Int): Unit ={
     val spark = SparkUtil.sparkSession()
     import spark.implicits._
-    val readModel = PipelineModel.load(String.format(PredictionService.contentBasedModelForUserPath, userId.toString))
+    val readModel = PipelineModel.load(String.format(contentBasedModelForUserPath, userId.toString))
     val notRatedItems = getItemsNotRateByUserSVM(userId)
     val predictions = readModel.transform(notRatedItems)
       .select($"label".as("movieId"), $"prediction")
       .sort($"prediction".desc)
-    new File(PredictionService.contentBasedPredictionsDirectoryPath).mkdirs()
-    new PredictionService().persistPredictionsForUser(userId, predictions, String.format(contentBasedPredictionsForUserPath, userId.toString))
+    new File(contentBasedPredictionsDirectoryPath).mkdirs()
+    CFPredictionService.persistPredictionsForUser(userId, predictions, String.format(contentBasedPredictionsForUserPath, userId.toString))
   }
 }
