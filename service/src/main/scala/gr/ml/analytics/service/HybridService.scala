@@ -5,26 +5,30 @@ import java.io.File
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.cf.PredictionService
 import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressionWithElasticNetBuilder}
-import gr.ml.analytics.util.GenresFeatureEngineering.ratingsWithFeaturesPath
 import gr.ml.analytics.util.GenresFeatureEngineering.moviesWithFeaturesPath
 import gr.ml.analytics.util.{CSVtoSVMConverter, GenresFeatureEngineering, Util}
+import org.slf4j.LoggerFactory
 
 object HybridService extends App{
   val collaborativeWeight = 1.0
   val contentBasedWeight = 1.0
+  val lastNRatings = 1000
 
   Util.windowsWorkAround()
   Util.loadAndUnzip()
 
-  if(!(new File(ratingsWithFeaturesPath).exists()))
-    GenresFeatureEngineering.createAllRatingsWithFeaturesFile()
+  val startTime = System.currentTimeMillis()
   if(!(new File(moviesWithFeaturesPath).exists()))
     GenresFeatureEngineering.createAllMoviesWithFeaturesFile()
-
-  CSVtoSVMConverter.createSVMRatingFilesForAllUsers()
+  val userIds = new PredictionService().getUserIdsFromLastNRatings(lastNRatings)
+  userIds.foreach(CSVtoSVMConverter.createSVMRatingsFileForUser)
   CSVtoSVMConverter.createSVMFileForAllItems()
+  new PredictionService().persistPopularItemIDS()
+  val finishTime = System.currentTimeMillis()
 
-  val userIds = new PredictionService().getUserIdsForPrediction()
+
+
+  LoggerFactory.getLogger("progressLogger").info("Startup time took: " + (finishTime - startTime) + " millis.")
 
   while(true){
     Thread.sleep(5000)

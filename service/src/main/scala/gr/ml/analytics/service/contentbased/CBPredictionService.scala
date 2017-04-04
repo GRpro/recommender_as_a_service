@@ -25,7 +25,7 @@ object CBPredictionService extends Constants {
 //    CSVtoSVMConverter.createSVMRatingFilesForCurrentUsers()
 
     Util.windowsWorkAround()
-    val userIds = new PredictionService().getUserIdsForPrediction()
+    val userIds = new PredictionService().getUserIdsFromLastNRatings(1000)
 
     for(userId <- userIds){
       val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)

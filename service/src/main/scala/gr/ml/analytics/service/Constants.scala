@@ -19,7 +19,6 @@ trait Constants {
   val bothRatingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small").toAbsolutePath.toString + File.separator + "*ratings.csv" // TODO remove
   val moviesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString
   val moviesWithFeaturesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "movies-with-features.csv").toAbsolutePath.toString
-  val ratingsWithFeaturesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-with-features.csv").toAbsolutePath.toString
   val ratingsWithFeaturesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "ratings-with-features-libsvm-user-%s.txt").toAbsolutePath.toString
   val ratingsSmallPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
   val allMoviesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "all-movies.txt").toAbsolutePath.toString
@@ -31,4 +30,5 @@ trait Constants {
   val collaborativePredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "collaborative-predictions").toAbsolutePath.toString
   val contentBasedPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "content-based-predictions").toAbsolutePath.toString
   val finalPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "final-predictions").toAbsolutePath.toString
+  val popularItemsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "popular-items.csv").toAbsolutePath.toString
 }

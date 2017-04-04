@@ -43,26 +43,6 @@ object GenresFeatureEngineering extends App with Constants {
     movieWriter.close()
   }
 
-  def createAllRatingsWithFeaturesFile(): Unit ={
-    val moviesWithFeaturesById = getMoviesWithFeaturesById()
-    val ratingsReader = CSVReader.open(ratingsPath)
-    val allRatings = ratingsReader.all().filter(p => p(0) != "userId")
-
-    val ratingsWithFeatures = allRatings.map((r:List[String])=>{
-      val movieId = r(1)
-      var mapToReturn = ListMap("userId" -> r(0), "movieId" -> movieId, "rating" -> r(2))
-      println("createAllRatingsWithFeaturesFile :: UserID = " + r(0))
-      mapToReturn ++ moviesWithFeaturesById.toMap.get(movieId).get
-    })
-    ratingsReader.close()
-    val ratingsHeaderWriter = CSVWriter.open(ratingsWithFeaturesPath, append = false)
-    ratingsHeaderWriter.writeRow(ratingsWithFeatures(0).map(t=>t._1).toList)
-    ratingsHeaderWriter.close()
-    val ratingsWriter = CSVWriter.open(ratingsWithFeaturesPath, append = true)
-    ratingsWithFeatures.foreach(m => ratingsWriter.writeRow(m.map(t=>t._2).toList))
-    ratingsWriter.close()
-  }
-
   def getMoviesWithFeatures(): List[ListMap[String, String]] ={
     val allMovies = getAllMovies()
     val moviesWithFeatures = allMovies.map((p:List[String]) => {
@@ -94,16 +74,5 @@ object GenresFeatureEngineering extends App with Constants {
       (movieId -> mapToReturn)
     })
     moviesWithFeaturesById
-  }
-
-  def addRatingToRatingsWithFeatures(userId: Int, movieId: Int, rating: Double): Unit ={
-    val moviesWithFeaturesReader = CSVReader.open(moviesWithFeaturesPath)
-    val movieIdAndFeatures = moviesWithFeaturesReader.all().filter(l=>l(0) == movieId.toString).head
-    var listToPersist = List(userId.toString, rating.toString)
-    listToPersist ++= movieIdAndFeatures
-    moviesWithFeaturesReader.close()
-    val ratingsWithFeaturesWriter = CSVWriter.open(ratingsWithFeaturesPath, append = true)
-    ratingsWithFeaturesWriter.writeRow(listToPersist)
-    ratingsWithFeaturesWriter.close()
   }
 }

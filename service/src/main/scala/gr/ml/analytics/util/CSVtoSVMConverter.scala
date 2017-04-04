@@ -22,20 +22,24 @@ object CSVtoSVMConverter extends App with Constants {
   }
 
   def createSVMRatingsFileForUser(userId:Int): Unit ={
-    val allGenres: List[String] = getAllGenres()
-    val csvReader = CSVReader.open(ratingsWithFeaturesPath)
-    val csvData = csvReader.all()
+    println("createSVMRatingsFileForUser :: UserID = " + userId)
+    val itemsReader = CSVReader.open(moviesWithFeaturesPath)
+    val ratingsReader = CSVReader.open(ratingsPath)
+    val allItems = itemsReader.all()
+    val allRatings = ratingsReader.all()
     new File(libsvmDirectoryPath).mkdirs()
     val pw = new PrintWriter(new File(String.format(ratingsWithFeaturesSVMPath, userId.toString)))
-    csvData.filter(r => r(0) == userId.toString)
+    allRatings.filter(r => r(0) == userId.toString)
       .foreach(r=>{
-        var svmString: String = r(2)
-        for(g <- allGenres)
-          svmString += " " + (allGenres.indexOf(g)+1) +":"+ r(csvData(0).indexOf(g))
+        val movieId = r(1)
+        var svmString: String = movieId
+        val featuresList = allItems.filter(l=>l(0)==movieId)(0).drop(1)
+        featuresList.zipWithIndex.foreach(t=>svmString+=(" "+(t._2+1)+":"+t._1))
         pw.println(svmString)
       })
     pw.close()
-    csvReader.close()
+    itemsReader.close()
+    ratingsReader.close()
   }
 
   def getAllGenres(): List[String] ={
@@ -47,7 +51,7 @@ object CSVtoSVMConverter extends App with Constants {
       .toList.sorted
     allGenres
   }
-  // Warning the "label" column will actually contain item ids!
+  // WARNING!! the "label" column will actually contain item ids!
   def createSVMFileForAllItems(): Unit ={
     val allGenres: List[String] = getAllGenres()
     val csvReader = CSVReader.open(moviesWithFeaturesPath)
@@ -59,6 +63,7 @@ object CSVtoSVMConverter extends App with Constants {
         for(g <- allGenres)
           svmString += " " + (allGenres.indexOf(g)+1) +":"+ r(csvData(0).indexOf(g))
         pw.println(svmString)
+        println("createSVMFileForAllItems :: MovieID = "  +r(0))
       })
     pw.close()
     csvReader.close()

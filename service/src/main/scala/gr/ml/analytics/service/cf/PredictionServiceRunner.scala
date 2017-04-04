@@ -128,12 +128,48 @@ class PredictionService {
     ratingsDF
   }
 
-  def getUserIdsForPrediction(): Set[Int] ={
-    //    val reader = CSVReader.open(PredictionService.ratingsPath)
-    //    val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
-    //    reader.close()
-    //    allUserIds
-    Set(1,2,3,4,5) // TODO unhardcode!
+  def getUserIdsFromLastNRatings(lastN: Int): Set[Int] = {
+    val reader = CSVReader.open(PredictionService.ratingsPath)
+    val allUserIds = reader.all().filter(r => r(0) != "userId").map(r => r(0).toInt)
+    val recentIds = allUserIds.splitAt(allUserIds.size - lastN)._2.toSet
+    reader.close()
+    recentIds
+  }
+
+  def persistPopularItemIDS(): Unit ={
+    val ratingsReader = CSVReader.open(PredictionService.ratingsPath)
+    val allRatings = ratingsReader.all()
+    ratingsReader.close()
+    val mostPopular = allRatings.filter(l=>l(1)!="movieId")
+      .groupBy(l=>l(1))
+      .map(t=>(t._1, t._2, t._2.size))
+      .map(t=>(t._1, t._2.reduce((l1,l2)=>List(l1(0), l1(1), (l1(2).toDouble + l2(2).toDouble).toString, l1(3))), t._3))
+      .map(t=>(t._1,t._2(2).toDouble / t._3.toDouble, t._3))
+      .toList.sortWith((tl,tr) => tl._3 > tr._3) // sorting by number of ratings
+      .take(allRatings.size/10) // take first 1/10 of items sorted by number of ratings
+
+      val maxRating: Double = mostPopular.sortWith((tl,tr)=>tl._2 > tr._2).head._2
+      val maxNumberOfRatings: Int = mostPopular.sortWith((tl,tr)=>tl._3 > tr._3).head._3
+
+      val sorted = mostPopular.sortWith(sortByRatingAndPopularity(maxRating,maxNumberOfRatings))
+      .map(t=>List(t._1, t._2, t._3))
+
+    val popularItemsHeaderWriter = CSVWriter.open(PredictionService.popularItemsPath, append = false)
+    popularItemsHeaderWriter.writeRow(List("itemId", "rating", "nRatings"))
+    popularItemsHeaderWriter.close()
+
+    val popularItemsWriter = CSVWriter.open(PredictionService.popularItemsPath, append = true)
+    popularItemsWriter.writeAll(sorted)
+    popularItemsWriter.close()
+  }
+
+  def sortByRatingAndPopularity(maxRating:Double, maxRatingsNumber:Int) ={
+    // Empirical coefficient to make popular high rated movies go first
+    // (suppressing unpopular but high-rated movies by small number of individuals)
+    // Math.PI is just for more "scientific" look ;-)
+    val coef = Math.PI * Math.sqrt(maxRatingsNumber.toDouble)/Math.sqrt(maxRating)
+    (tl:(String,Double,Int), tr:(String,Double,Int)) =>
+      Math.sqrt(tl._3) + coef * Math.sqrt(tl._2) > Math.sqrt(tr._3) + coef * Math.sqrt(tr._2)
   }
 
   def getAllUserIds(): Set[Int] ={
@@ -159,7 +195,7 @@ object PredictionServiceRunner extends App with Constants {
   while(true) {
     Thread.sleep(1000)
     Util.tryAndLog(predictionService.updateModel(), "Collaborative:: Updating model")
-    val userIds: Set[Int] = predictionService.getUserIdsForPrediction()
+    val userIds: Set[Int] = predictionService.getUserIdsFromLastNRatings(1000)
     for(userId <- userIds){
       Util.tryAndLog(predictionService.updatePredictionsForUser(userId), "Collaborative:: Updating predictions for User " + userId)
     }
