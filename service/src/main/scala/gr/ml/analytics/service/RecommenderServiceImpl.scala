@@ -10,7 +10,6 @@ class RecommenderServiceImpl extends RecommenderService with Constants {
   override def save(userId: Int, movieId: Int, rating: Double): Unit = {
     val writer = CSVWriter.open(ratingsPath, append = true)
     writer.writeRow(List(userId.toString, movieId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
-    GenresFeatureEngineering.addRatingToRatingsWithFeatures(userId, movieId, rating)
     CSVtoSVMConverter.createSVMRatingsFileForUser(userId)
   }
 
