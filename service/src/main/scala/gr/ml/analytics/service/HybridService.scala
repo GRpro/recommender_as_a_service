@@ -64,7 +64,7 @@ object HybridService extends App with Constants{
       .map(t=>t._2).toList.sortWith((l,r) => l(2).toDouble > r(2).toDouble)
 
     val finalPredictionsHeaderWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, userId.toString), append = false)
-    finalPredictionsHeaderWriter.writeRow(List("userId", "movieId", "prediction"))
+    finalPredictionsHeaderWriter.writeRow(List("userId", "itemId", "prediction"))
     finalPredictionsHeaderWriter.close()
     val finalPredictionsWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, userId.toString), append = true)
     finalPredictionsWriter.writeAll(hybridPredictions)

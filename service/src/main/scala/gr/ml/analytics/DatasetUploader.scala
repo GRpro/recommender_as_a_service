@@ -28,9 +28,9 @@ object DatasetUploader extends App with Constants {
   val ratings = reader.toStreamWithHeaders.flatMap(map => {
     for {
       userId <- map.get("userId")
-      movieId <- map.get("movieId")
+      itemId <- map.get("movieId")   // TODO change it to itemId
       rating <- map.get("rating")
-    } yield Rating(userId.toInt, movieId.toInt, rating.toDouble)
+    } yield Rating(userId.toInt, itemId.toInt, rating.toDouble)
   }).toList
 
 

@@ -7,9 +7,9 @@ class RecommenderServiceImpl extends RecommenderService with Constants {
   /**
     * @inheritdoc
     */
-  override def save(userId: Int, movieId: Int, rating: Double): Unit = {
+  override def save(userId: Int, itemId: Int, rating: Double): Unit = {
     val writer = CSVWriter.open(ratingsPath, append = true)
-    writer.writeRow(List(userId.toString, movieId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
+    writer.writeRow(List(userId.toString, itemId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
     CSVtoSVMConverter.createSVMRatingsFileForUser(userId)
   }
 
@@ -22,8 +22,8 @@ class RecommenderServiceImpl extends RecommenderService with Constants {
     predictionsReader.close()
     val filtered = allPredictions.filter((pr: List[String]) => pr.head.toInt == userId)
     if (filtered.size > 0) {
-      val predictedMovieIdsFromFile = filtered.last(1).split(":").toList.map(m => m.toInt).take(n)
-      predictedMovieIdsFromFile
+      val predictedItemIdsFromFile = filtered.last(1).split(":").toList.map(m => m.toInt).take(n)
+      predictedItemIdsFromFile
     }
     else {
       val popularItemsReader = CSVReader.open(popularItemsPath)

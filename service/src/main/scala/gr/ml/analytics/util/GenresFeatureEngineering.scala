@@ -37,7 +37,7 @@ object GenresFeatureEngineering extends App with Constants {
     moviesWithFeatures.foreach(m => {
       val list = m.map(t=>t._2).toList
       movieWriter.writeRow(list)
-      println("createAllMoviesWithFeaturesFile :: MovieId = " + list(0))
+      println("createAllMoviesWithFeaturesFile :: ItemID = " + list(0))
     })
     movieWriter.close()
   }
@@ -45,8 +45,8 @@ object GenresFeatureEngineering extends App with Constants {
   def getMoviesWithFeatures(): List[ListMap[String, String]] ={
     val allMovies = getAllMovies()
     val moviesWithFeatures = allMovies.map((p:List[String]) => {
-      println("getMoviesWithFeatures :: MovieID = " + p(0))
-      var mapToReturn = ListMap("movieId" -> p(0))
+      println("getMoviesWithFeatures :: ItemID = " + p(0))
+      var mapToReturn = ListMap("itemId" -> p(0))
       val movieGenres = p(2).replace("|", ":").split(":")
       val allGenres: List[String] = getAllGenres()
       for(genre <- allGenres) {
@@ -62,15 +62,15 @@ object GenresFeatureEngineering extends App with Constants {
     val allMovies = getAllMovies()
     val allGenres: List[String] = getAllGenres()
     val moviesWithFeaturesById = allMovies.map((p: List[String]) => {
-      val movieId = p(0)
-      var mapToReturn = ListMap("movieId" -> movieId)
+      val itemId = p(0)
+      var mapToReturn = ListMap("itemId" -> itemId)
       val movieGenres = p(2).replace("|", ":").split(":")
       for (genre <- allGenres) {
         val containsThisGenre = if (movieGenres.contains(genre)) 1 else 0
         mapToReturn += (genre -> containsThisGenre.toString)
       }
-      println("getMoviesWithFeaturesById :: MovieId = " + movieId)
-      (movieId -> mapToReturn)
+      println("getMoviesWithFeaturesById :: ItemID = " + itemId)
+      (itemId -> mapToReturn)
     })
     moviesWithFeaturesById
   }

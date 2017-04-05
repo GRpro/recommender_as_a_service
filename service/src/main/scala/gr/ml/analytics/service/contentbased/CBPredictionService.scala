@@ -38,7 +38,7 @@ object CBPredictionService extends Constants {
   def getItemsNotRateByUserSVM(userId: Int): DataFrame = {
     val spark = SparkUtil.sparkSession()
     import spark.implicits._
-    val doubleItemIDsNotRatedByUser = CFPredictionService.getMovieIDsNotRatedByUser(userId).map(i => i.toDouble)
+    val doubleItemIDsNotRatedByUser = CFPredictionService.getItemIDsNotRatedByUser(userId).map(i => i.toDouble)
     val allItems = spark.read.format("libsvm").load(allMoviesSVMPath)
     val notRatedItems = allItems.filter($"label".isin(doubleItemIDsNotRatedByUser: _*))
     notRatedItems
@@ -59,7 +59,7 @@ object CBPredictionService extends Constants {
     val readModel = PipelineModel.load(String.format(contentBasedModelForUserPath, userId.toString))
     val notRatedItems = getItemsNotRateByUserSVM(userId)
     val predictions = readModel.transform(notRatedItems)
-      .select($"label".as("movieId"), $"prediction")
+      .select($"label".as("itemId"), $"prediction")
       .sort($"prediction".desc)
     new File(contentBasedPredictionsDirectoryPath).mkdirs()
     CFPredictionService.persistPredictionsForUser(userId, predictions, String.format(contentBasedPredictionsForUserPath, userId.toString))

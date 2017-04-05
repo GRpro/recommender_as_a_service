@@ -107,19 +107,19 @@ object CFPredictionService extends Constants {
     predictions
   }
 
-  def persistPredictedIdsForUser(userId: Int, predictedMovieIds: List[Int]): Unit = {
+  def persistPredictedIdsForUser(userId: Int, predictedItemIds: List[Int]): Unit = {
     import com.github.tototoshi.csv._
     val writer = CSVWriter.open(predictionsPath, append = true)
-    writer.writeRow(List(userId, predictedMovieIds.toArray.mkString(":")))
+    writer.writeRow(List(userId, predictedItemIds.toArray.mkString(":")))
   }
 
   def persistPredictionsForUser(userId: Int, predictions: DataFrame, path: String): Unit = {
     val predictionsHeaderWriter = CSVWriter.open(path, append = false)
-    predictionsHeaderWriter.writeRow(List("userId","movieId","prediction")) // TODO change to "itemId"
+    predictionsHeaderWriter.writeRow(List("userId","itemId","prediction"))
     predictionsHeaderWriter.close()
 
     val predictionsWriter = CSVWriter.open(String.format(path), append = true)
-    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("movieId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
+    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("itemId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
     predictionsWriter.writeAll(predictionsList)
     predictionsWriter.close()
   }
@@ -139,16 +139,16 @@ object CFPredictionService extends Constants {
     val predictions = model.transform(toRateDS)
       .filter(not(isnan($"prediction")))
       .orderBy(col("prediction").desc)
-    val predictedMovieIds: List[Int] = predictions.select("movieId").map(row => row.getInt(0)).collect().toList
-    predictedMovieIds
+    val predictedItemIds: List[Int] = predictions.select("itemId").map(row => row.getInt(0)).collect().toList
+    predictedItemIds
   }
 
-  def getMovieIDsNotRatedByUser(userId: Int): List[Int] = {
+  def getItemIDsNotRatedByUser(userId: Int): List[Int] = {
     val ratingsReader = CSVReader.open(ratingsPath)
     val allRatings = ratingsReader.all()
     ratingsReader.close()
 
-    val allMovieIDs = getAllMovieIDs()
+    val allMovieIDs = getAllItemIDs()
     val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
       .map((p:List[String]) => p(1).toInt).toSet
     val movieIDsNotRateByUser = allMovieIDs.filter(m => !movieIdsRatedByUser.contains(m))
@@ -156,16 +156,16 @@ object CFPredictionService extends Constants {
   }
 
   def getUserMoviePairsToRate(userId: Int): DataFrame = {
-    val movieIDsNotRateByUser = getMovieIDsNotRatedByUser(userId)
-    val userMovieList: List[(Int, Int)] = movieIDsNotRateByUser.map(movieId => (userId, movieId))
-    userMovieList.toDF("userId", "movieId")
+    val itemIDsNotRateByUser = getItemIDsNotRatedByUser(userId)
+    val userMovieList: List[(Int, Int)] = itemIDsNotRateByUser.map(itemId => (userId, itemId))
+    userMovieList.toDF("userId", "itemId")
   }
 
-  def getAllMovieIDs(): List[Int] ={
+  def getAllItemIDs(): List[Int] ={
     val reader = CSVReader.open(moviesPath)
-    val allMovieIds = reader.all().filter(r=>r(0)!="movieId").map(r=>r(0).toInt)
+    val allItemIds = reader.all().filter(r=>r(0)!="itemId").map(r=>r(0).toInt)
     reader.close()
-    allMovieIds
+    allItemIds
   }
 
   def getAllUserIds(): Set[Int] ={
