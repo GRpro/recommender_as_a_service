@@ -1,13 +1,9 @@
 package gr.ml.analytics
 
-import java.nio.file.Paths
-
 import akka.actor.ActorSystem
 import com.github.tototoshi.csv.CSVReader
 import com.typesafe.config.{Config, ConfigFactory}
 import gr.ml.analytics.service.{Constants, Rating}
-import gr.ml.analytics.service.cf.PredictionService
-import gr.ml.analytics.util.Util
 import spray.client.pipelining._
 import spray.http._
 import spray.httpx.SprayJsonSupport._
@@ -25,19 +21,16 @@ import scala.concurrent.{Await, Future}
 object DatasetUploader extends App with Constants {
   val config: Config = ConfigFactory.load("application.conf")
 
-  Util.loadResource(smallDatasetUrl,
-    Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
-  Util.unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath,
-    Paths.get(datasetsDirectory).toAbsolutePath)
+    //  Util.loadAndUnzip() TODO Grisha, do we need it here?
 
-  val reader = CSVReader.open(PredictionService.historicalRatingsPath)
+  val reader = CSVReader.open(ratingsPath)
 
   val ratings = reader.toStreamWithHeaders.flatMap(map => {
     for {
       userId <- map.get("userId")
-      movieId <- map.get("movieId")
+      itemId <- map.get("movieId")   // TODO change it to itemId
       rating <- map.get("rating")
-    } yield Rating(userId.toInt, movieId.toInt, rating.toDouble)
+    } yield Rating(userId.toInt, itemId.toInt, rating.toDouble)
   }).toList
 
 

@@ -2,14 +2,21 @@ package gr.ml.analytics.util
 
 import java.io.FileOutputStream
 import java.net.URL
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import java.util.zip.ZipInputStream
 
 import com.typesafe.scalalogging._
+import gr.ml.analytics.util.GenresFeatureEngineering.{datasetsDirectory, smallDatasetFileName, smallDatasetUrl}
+import org.slf4j.LoggerFactory
 
 import scala.sys.process._
 
 object Util extends LazyLogging {
+
+  def loadAndUnzip(): Unit ={
+    loadResource(smallDatasetUrl, Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
+    unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath, Paths.get(datasetsDirectory).toAbsolutePath)
+  }
 
   def loadResource(url: String, path: Path) = {
     if (!Files.exists(path)) {
@@ -50,6 +57,16 @@ object Util extends LazyLogging {
     if (System.getProperty("os.name").contains("Windows")) {
       val HADOOP_BIN_PATH = getClass.getClassLoader.getResource("").getPath
       System.setProperty("hadoop.home.dir", HADOOP_BIN_PATH)
+    }
+  }
+
+  def tryAndLog(method: => Unit, message: String): Unit ={
+    val progressLogger = LoggerFactory.getLogger("progressLogger")
+    progressLogger.info(message)
+    try {
+      method
+    } catch {
+      case _: Exception => progressLogger.error("Error during " + message)
     }
   }
 }
