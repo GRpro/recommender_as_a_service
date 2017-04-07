@@ -1,0 +1,30 @@
+version: '2'
+services:
+
+  cassandra-seed1:
+    image: cassandra
+    container_name: cassandra-seed1
+    hostname: cassandra-seed1
+    restart: always
+    ports:
+      - "9042:9042"
+    networks:
+      cassandra_network:
+        ipv4_address: 172.25.0.101
+
+  cassandra-node:
+    image: cassandra
+    restart: always
+    links:
+      - cassandra-seed1:seed1
+    environment:
+      - CASSANDRA_SEEDS=seed1
+    networks:
+      - cassandra_network
+
+networks:
+  cassandra_network:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.25.0.0/24
