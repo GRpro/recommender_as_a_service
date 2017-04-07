@@ -28,7 +28,43 @@ val buildInfoSettings = Seq(
   }
 )
 
-// root
+// dependencies configuration
+
+val sprayVersion = "1.3.2"
+val akkaVersion = "2.4.2"
+val phantomVersion = "2.1.3"
+val sparkVersion = "2.0.1"
+
+resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/", "Spray Repository" at "http://repo.spray.io")
+
+
+val cassandraIntegrationDependencies = Seq(
+  "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
+  "com.outworkers" %% "phantom-dsl" % phantomVersion
+)
+
+val sprayDependencies = Seq(
+  "io.spray" %% "spray-can" % sprayVersion,
+  "io.spray" %% "spray-routing" % sprayVersion,
+  "io.spray" %% "spray-json" % sprayVersion,
+  "io.spray" %% "spray-client" % sprayVersion,
+  "io.spray" %% "spray-testkit" % sprayVersion % "test"
+)
+
+val akkaDependencies = Seq(
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
+)
+
+val sparkDependencies = Seq(
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-mllib" % sparkVersion
+)
+
+// module structure configuration
+
 lazy val root = project.in(file("."))
   .settings(commonSettings: _*)
   .settings(
@@ -50,40 +86,17 @@ lazy val service = project.in(file("service"))
     name := "recommendation-service"
   )
   .settings(
-    libraryDependencies ++= {
-      val sparkVersion = "2.0.1"
-      Seq(
-        "org.apache.spark" %% "spark-sql" % sparkVersion,
-        "org.apache.spark" %% "spark-core" % sparkVersion,
-        "org.apache.spark" %% "spark-mllib" % sparkVersion
-      )
-    },
+    libraryDependencies ++= sparkDependencies,
+    libraryDependencies ++= sprayDependencies,
+    libraryDependencies ++= akkaDependencies,
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
-
-    resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-      "Spray Repository" at "http://repo.spray.io"),
-
-    libraryDependencies ++= {
-      val akkaVersion = "2.4.2"
-      val sprayVersion = "1.3.2"
-      Seq(
-        "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-        "io.spray" %% "spray-can" % sprayVersion,
-        "io.spray" %% "spray-routing" % sprayVersion,
-        "io.spray" %% "spray-json" % sprayVersion,
-        "io.spray" %% "spray-client" % sprayVersion,
-        "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-        "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
-        "org.specs2" %% "specs2" % "2.3.13" % "test",
-        "io.spray" %% "spray-testkit" % sprayVersion % "test",
-        "com.github.tototoshi" %% "scala-csv" % "1.3.0"
-      )
-    },
-
+    libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
+    libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
   .dependsOn(api)
 
 
-
+// Add any command aliases that may be useful as shortcuts
+addCommandAlias("cc", ";clean;compile")
