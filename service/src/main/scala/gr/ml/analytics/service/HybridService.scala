@@ -14,23 +14,24 @@ object HybridService extends App with Constants{
   val lastNRatings = 1000
 
   Util.windowsWorkAround()
-  Util.loadAndUnzip()
+  Util.loadAndUnzip() // TODO new ratings will be rewritten!!
 
   val startTime = System.currentTimeMillis()
   if(!(new File(moviesWithFeaturesPath).exists()))
     GenresFeatureEngineering.createAllMoviesWithFeaturesFile()
   val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings)
-  userIds.foreach(CSVtoSVMConverter.createSVMRatingsFileForUser)
-  CSVtoSVMConverter.createSVMFileForAllItems()
+  userIds.foreach(CSVtoSVMConverter.createSVMRatingsFileForUser) // TODO add checking for existing of file!
+  if(!(new File(allMoviesSVMPath).exists()))
+    CSVtoSVMConverter.createSVMFileForAllItems()
   CFPredictionService.persistPopularItemIDS()
   val finishTime = System.currentTimeMillis()
 
   LoggerFactory.getLogger("progressLogger").info("Startup time took: " + (finishTime - startTime) + " millis.")
 
   while(true){
-    Thread.sleep(5000)
+    Thread.sleep(5000) // can be increased for production
     Util.tryAndLog(CFPredictionService.updateModel(), "Collaborative:: Updating model")
-    val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings)
+    val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings) // TODO  what if new user is created but there's not SVM file yet?
     for(userId <- userIds){
       val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
       Util.tryAndLog(CBPredictionService.updateModelForUser(pipeline, userId), "Content-based:: Updating model for user " + userId)
