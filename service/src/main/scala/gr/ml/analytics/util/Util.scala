@@ -5,6 +5,7 @@ import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.ZipInputStream
 
+import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.scalalogging._
 import gr.ml.analytics.service.Constants
 import org.slf4j.LoggerFactory
@@ -17,6 +18,19 @@ object Util extends LazyLogging with Constants{
     loadResource(smallDatasetUrl, Paths.get(String.format(datasetsDirectory, subRootDir), smallDatasetFileName).toAbsolutePath)
     unzip(Paths.get(String.format(datasetsDirectory, subRootDir), smallDatasetFileName).toAbsolutePath,
       Paths.get(String.format(datasetsDirectory, subRootDir)).toAbsolutePath)
+    replaceMovieIdToItemId(subRootDir)
+  }
+
+  def replaceMovieIdToItemId(subRootDir:String): Unit ={
+    val ratingsReader = CSVReader.open(String.format(ratingsPath, subRootDir))
+    val allRatings = ratingsReader.all().filter(l=>l(0)!="userId")
+    ratingsReader.close()
+    val ratingsHeaderWriter = CSVWriter.open(String.format(ratingsPath, subRootDir), append = false)
+    ratingsHeaderWriter.writeRow(List("userId", "itemId", "rating", "timestamp"))
+    ratingsHeaderWriter.close()
+    val ratingsWriter = CSVWriter.open(String.format(ratingsPath, subRootDir), append = true)
+    ratingsWriter.writeAll(allRatings)
+    ratingsWriter.close()
   }
 
   def loadResource(url: String, path: Path) = {

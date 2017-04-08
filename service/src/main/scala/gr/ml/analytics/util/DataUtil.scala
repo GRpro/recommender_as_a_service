@@ -11,7 +11,7 @@ class DataUtil(val subRootDir: String) extends Constants{
     ratingsReader.close()
 
     val allMovieIDs = getAllItemIDs()
-    val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
+    val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="itemId" && p(0).toInt==userId)
       .map((p:List[String]) => p(1).toInt).toSet
     val movieIDsNotRateByUser = allMovieIDs.filter(m => !movieIdsRatedByUser.contains(m))
     movieIDsNotRateByUser

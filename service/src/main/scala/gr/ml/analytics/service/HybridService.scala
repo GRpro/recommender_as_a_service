@@ -8,28 +8,26 @@ import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressi
 import gr.ml.analytics.util.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
 import org.slf4j.LoggerFactory
 
-object HybridService extends App with Constants{
+class HybridService(subRootDir: String, lastNRatings: Int) extends Constants{
   val collaborativeWeight = 1.0
   val contentBasedWeight = 1.0
-  val lastNRatings = 1000
-
-  val subRootDir = mainSubDir
 
   val dataUtil = new DataUtil(subRootDir)
   val cfPredictionService = new CFPredictionService(subRootDir)
   val cbPredictionService = new CBPredictionService(subRootDir)
   val csv2svmConverter = new CSVtoSVMConverter(subRootDir)
-  prepareNecessaryFiles()
 
-  while(true){
-    Thread.sleep(5000) // can be increased for production
-    runOneCycle()
+  def run(): Unit ={
+    prepareNecessaryFiles()
+
+    while(true){
+      Thread.sleep(5000) // can be increased for production
+      runOneCycle()
+    }
+
   }
 
   def prepareNecessaryFiles(): Unit ={
-    Util.windowsWorkAround()
-    Util.loadAndUnzip(subRootDir) // TODO new ratings will be rewritten!!
-
     val startTime = System.currentTimeMillis()
     if(!(new File(String.format(moviesWithFeaturesPath, subRootDir)).exists()))
       new GenresFeatureEngineering(subRootDir).createAllMoviesWithFeaturesFile()
@@ -88,4 +86,9 @@ object HybridService extends App with Constants{
     val finalPredictedIDs = hybridPredictions.map(l=>l(1).toInt)
     cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs)
   }
+}
+
+object HybridServiceRunner extends App with Constants{
+  Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
+  new HybridService(mainSubDir, 1000).run()
 }

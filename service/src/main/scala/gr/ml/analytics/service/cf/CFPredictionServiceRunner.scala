@@ -16,11 +16,11 @@ class CFPredictionService(val subRootDir: String) extends Constants {
   val dataUtil = new DataUtil(subRootDir)
 
   def persistPopularItemIDS(): Unit ={
-    println("persistPopularItemIDS")
+    println("persistPopularItemIDS") // TODO move to Data Util
     val ratingsReader = CSVReader.open(String.format(ratingsPath,subRootDir))
     val allRatings = ratingsReader.all()
     ratingsReader.close()
-    val mostPopular = allRatings.filter(l=>l(1)!="movieId")
+    val mostPopular = allRatings.filter(l=>l(1)!="itemId")
       .groupBy(l=>l(1))
       .map(t=>(t._1, t._2, t._2.size))
       .map(t=>(t._1, t._2.reduce((l1,l2)=>List(l1(0), l1(1), (l1(2).toDouble + l2(2).toDouble).toString, l1(3))), t._3))
@@ -84,11 +84,11 @@ class CFPredictionService(val subRootDir: String) extends Constants {
         .option("header", "true")
         .option("mode", "DROPMALFORMED")
         .load(String.format(ratingsPath, subRootDir))
-        .select("userId", "movieId", "rating", "timestamp")
+        .select("userId", "itemId", "rating", "timestamp")
 
       ratingsStringDF
         .withColumn("userId", toInt(ratingsStringDF("userId")))
-        .withColumn("itemId", toInt(ratingsStringDF("movieId"))) // an attempt to name the movieId column as itemId
+        .withColumn("itemId", toInt(ratingsStringDF("itemId")))
         .withColumn("rating", toDouble(ratingsStringDF("rating")))
     }
     ratingsDF
