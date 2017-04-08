@@ -20,7 +20,7 @@ object HybridService extends App with Constants{
   if(!(new File(moviesWithFeaturesPath).exists()))
     GenresFeatureEngineering.createAllMoviesWithFeaturesFile()
   val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings)
-  userIds.foreach(CSVtoSVMConverter.createSVMRatingsFileForUser) // TODO add checking for existing of file!
+  userIds.foreach(CSVtoSVMConverter.createSVMRatingsFileForUser)
   if(!(new File(allMoviesSVMPath).exists()))
     CSVtoSVMConverter.createSVMFileForAllItems()
   CFPredictionService.persistPopularItemIDS()
@@ -31,7 +31,7 @@ object HybridService extends App with Constants{
   while(true){
     Thread.sleep(5000) // can be increased for production
     Util.tryAndLog(CFPredictionService.updateModel(), "Collaborative:: Updating model")
-    val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings) // TODO  what if new user is created but there's not SVM file yet?
+    val userIds = CFPredictionService.getUserIdsFromLastNRatings(lastNRatings)
     for(userId <- userIds){
       val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
       Util.tryAndLog(CBPredictionService.updateModelForUser(pipeline, userId), "Content-based:: Updating model for user " + userId)

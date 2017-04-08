@@ -27,4 +27,9 @@ trait Constants {
   val contentBasedPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "content-based-predictions").toAbsolutePath.toString
   val finalPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "final-predictions").toAbsolutePath.toString
   val popularItemsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "popular-items.csv").toAbsolutePath.toString
+  val estimationDirectoryPath: String = Paths.get(datasetsDirectory, "estimation").toAbsolutePath.toString
+  val trainRatingsPath: String = Paths.get(datasetsDirectory, "estimation", "train-ratings.csv").toAbsolutePath.toString
+  val testRatingsPath: String = Paths.get(datasetsDirectory, "estimation", "test-ratings.csv").toAbsolutePath.toString
+  val trainRatingsPathSmall: String = Paths.get(datasetsDirectory, "estimation", "train-ratings-small.csv").toAbsolutePath.toString // TODO replace small with full version
+  val testRatingsPathSmall: String = Paths.get(datasetsDirectory, "estimation", "test-ratings-small.csv").toAbsolutePath.toString // TODO replace small with full version
 }
