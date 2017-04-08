@@ -68,24 +68,50 @@ val sparkDependencies = Seq(
 lazy val root = project.in(file("."))
   .settings(commonSettings: _*)
   .settings(
-    name := "recommendation"
+    name := "recommender-saas",
+    description :=
+      """
+        |Root project of recommender as a service software which aggregates
+        |set of modules related to the project.
+      """.stripMargin
   )
-  .aggregate(service)
+  .aggregate(service, api, common)
 
+
+lazy val common = project.in(file("common"))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "recommender-saas-common",
+    description :=
+      """
+        |Common utilities and services shared across modules inside recommender as a service software.
+      """.stripMargin
+  )
 
 lazy val api = project.in(file("api"))
   .settings(commonSettings: _*)
+  .settings(buildInfoSettings: _*)
   .settings(
-    name := "recommendation-api"
+    name := "recommender-saas-api",
+    description :=
+      """
+        |REST API for recommender as a service software
+      """.stripMargin
   )
+  .dependsOn(common)
 
 lazy val service = project.in(file("service"))
   .settings(commonSettings: _*)
   .settings(buildInfoSettings: _*)
   .settings(
-    name := "recommendation-service"
+    name := "recommender-saas-service",
+    description :=
+      """
+        |Recommender service where all magic happens
+      """.stripMargin
   )
   .settings(
+    libraryDependencies ++= cassandraIntegrationDependencies,
     libraryDependencies ++= sparkDependencies,
     libraryDependencies ++= sprayDependencies,
     libraryDependencies ++= akkaDependencies,
@@ -95,8 +121,8 @@ lazy val service = project.in(file("service"))
     libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
-  .dependsOn(api)
+  .dependsOn(common)
 
 
 // Add any command aliases that may be useful as shortcuts
-addCommandAlias("cc", ";clean;compile")
+addCommandAlias("cct", ";clean;compile;test")
