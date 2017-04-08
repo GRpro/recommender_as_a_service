@@ -1,7 +1,8 @@
 package gr.ml.analytics.service
 
-import com.github.tototoshi.csv._
+import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.util.CSVtoSVMConverter
+
 class RecommenderServiceImpl extends RecommenderService with Constants {
 
   /**

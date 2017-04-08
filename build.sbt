@@ -1,4 +1,4 @@
-import sbt.Keys._
+import sbt.Keys.{libraryDependencies, _}
 
 val commonSettings = Seq(
   organization := "gr.ml.analytics",
@@ -16,52 +16,25 @@ val buildInfoSettings = Seq(
   sourceGenerators in Compile <+= (sourceManaged in Compile, version, name) map { (d, v, n) =>
     val file = d / "info.scala"
     val pkg = "gr.ml.analytics"
-    IO.write(file, s"""package $pkg
-                     |class BuildInfo {
-                     |  val info = Map[String, String](
-                     |    "name" -> "%s",
-                     |    "version" -> "%s"
-                     |    )
-                     |}
-                     |""".stripMargin.format(n, v))
+    IO.write(file,
+      s"""package $pkg
+         |class BuildInfo {
+         |  val info = Map[String, String](
+         |    "name" -> "%s",
+         |    "version" -> "%s"
+         |    )
+         |}
+         |""".stripMargin.format(n, v))
     Seq(file)
   }
 )
 
-// dependencies configuration
+// dependency versions
 
 val sprayVersion = "1.3.2"
 val akkaVersion = "2.4.2"
 val phantomVersion = "2.1.3"
 val sparkVersion = "2.0.1"
-
-resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/", "Spray Repository" at "http://repo.spray.io")
-
-
-val cassandraIntegrationDependencies = Seq(
-  "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
-  "com.outworkers" %% "phantom-dsl" % phantomVersion
-)
-
-val sprayDependencies = Seq(
-  "io.spray" %% "spray-can" % sprayVersion,
-  "io.spray" %% "spray-routing" % sprayVersion,
-  "io.spray" %% "spray-json" % sprayVersion,
-  "io.spray" %% "spray-client" % sprayVersion,
-  "io.spray" %% "spray-testkit" % sprayVersion % "test"
-)
-
-val akkaDependencies = Seq(
-  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
-)
-
-val sparkDependencies = Seq(
-  "org.apache.spark" %% "spark-sql" % sparkVersion,
-  "org.apache.spark" %% "spark-core" % sparkVersion,
-  "org.apache.spark" %% "spark-mllib" % sparkVersion
-)
 
 // module structure configuration
 
@@ -98,6 +71,32 @@ lazy val api = project.in(file("api"))
         |REST API for recommender as a service software
       """.stripMargin
   )
+  .settings(
+
+    resolvers ++= Seq(
+      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+      "Spray Repository" at "http://repo.spray.io"
+    ),
+
+    libraryDependencies ++= Seq(
+      "io.spray" %% "spray-can" % sprayVersion,
+      "io.spray" %% "spray-routing" % sprayVersion,
+      "io.spray" %% "spray-json" % sprayVersion,
+      "io.spray" %% "spray-client" % sprayVersion,
+      "io.spray" %% "spray-testkit" % sprayVersion % "test"
+    ),
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+      "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
+    ),
+//    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
+    libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
+    libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
+    libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
+    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
+  )
   .dependsOn(common)
 
 lazy val service = project.in(file("service"))
@@ -111,10 +110,17 @@ lazy val service = project.in(file("service"))
       """.stripMargin
   )
   .settings(
-    libraryDependencies ++= cassandraIntegrationDependencies,
-    libraryDependencies ++= sparkDependencies,
-    libraryDependencies ++= sprayDependencies,
-    libraryDependencies ++= akkaDependencies,
+    resolvers ++= Seq(
+      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+      "Spray Repository" at "http://repo.spray.io"
+    ),
+
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % sparkVersion,
+      "org.apache.spark" %% "spark-core" % sparkVersion,
+      "org.apache.spark" %% "spark-mllib" % sparkVersion
+    ),
+//    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",

@@ -1,6 +1,5 @@
 package gr.ml.analytics
 
-
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
 import akka.io.IO

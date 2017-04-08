@@ -21,7 +21,7 @@ import scala.concurrent.{Await, Future}
 object DatasetUploader extends App with Constants {
   val config: Config = ConfigFactory.load("application.conf")
 
-    //  Util.loadAndUnzip() TODO Grisha, do we need it here?
+  //  Util.loadAndUnzip() TODO Grisha, do we need it here?
 
   val reader = CSVReader.open(ratingsPath)
 
@@ -43,7 +43,7 @@ object DatasetUploader extends App with Constants {
 
   val pipeline: HttpRequest => Future[HttpResponse] = (
     sendReceive
-    ~> setContentType(MediaTypes.`application/json`)
+      ~> setContentType(MediaTypes.`application/json`)
     )
 
   val url = s"${config.getString("service.recommender.rest")}/ratings"

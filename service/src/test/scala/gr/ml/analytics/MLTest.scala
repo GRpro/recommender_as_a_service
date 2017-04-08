@@ -2,7 +2,7 @@ package gr.ml.analytics
 
 import java.nio.file.Paths
 
-import gr.ml.analytics.service.{Constants, RecommenderService, RecommenderServiceImpl}
+import gr.ml.analytics.service.Constants
 import gr.ml.analytics.service.cf.CFPredictionService
 import gr.ml.analytics.util.{SparkUtil, Util}
 import org.apache.spark.ml.recommendation.ALS

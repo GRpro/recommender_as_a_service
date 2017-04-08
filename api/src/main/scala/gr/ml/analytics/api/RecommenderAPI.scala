@@ -1,13 +1,11 @@
 package gr.ml.analytics.api
 
 import akka.actor.{Actor, ActorRefFactory}
-import com.typesafe.config.Config
 import gr.ml.analytics.service.{Rating, RecommenderService}
 import spray.http.{MediaTypes, StatusCodes}
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.routing.{HttpService, _}
-
 
 class RecommenderAPI(val ratingService: RecommenderService) extends Actor with HttpService {
 
