@@ -4,17 +4,18 @@ import java.io.{File, PrintWriter}
 
 import com.github.tototoshi.csv.CSVReader
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.service.cf.CFPredictionService
 import org.slf4j.LoggerFactory
 
-object CSVtoSVMConverter extends App with Constants {
+class CSVtoSVMConverter(subRootDir: String) extends Constants {
+
+  val dataUtil = new DataUtil(subRootDir)
 
   val progressLogger = LoggerFactory.getLogger("progressLogger")
 
   Util.windowsWorkAround()
 
   def createSVMRatingFilesForAllUsers(): Unit ={
-    val userIds = CFPredictionService.getAllUserIds()
+    val userIds = dataUtil.getAllUserIds()
     for(userId <- userIds){
       createSVMRatingsFileForUser(userId)
     }
@@ -22,12 +23,12 @@ object CSVtoSVMConverter extends App with Constants {
 
   def createSVMRatingsFileForUser(userId:Int): Unit ={
     println("createSVMRatingsFileForUser :: UserID = " + userId)
-    val itemsReader = CSVReader.open(moviesWithFeaturesPath)
-    val ratingsReader = CSVReader.open(ratingsPath)
+    val itemsReader = CSVReader.open(String.format(moviesWithFeaturesPath, subRootDir))
+    val ratingsReader = CSVReader.open(String.format(ratingsPath, subRootDir))
     val allItems = itemsReader.all()
     val allRatings = ratingsReader.all()
-    new File(libsvmDirectoryPath).mkdirs()
-    val pw = new PrintWriter(new File(String.format(ratingsWithFeaturesSVMPath, userId.toString)))
+    new File(String.format(libsvmDirectoryPath, subRootDir)).mkdirs()
+    val pw = new PrintWriter(new File(String.format(ratingsWithFeaturesSVMPath, subRootDir, userId.toString)))
     allRatings.filter(r => r(0) == userId.toString)
       .foreach(r=>{
         val itemId = r(1)
@@ -43,9 +44,9 @@ object CSVtoSVMConverter extends App with Constants {
 
   // WARNING!! the "label" column will actually contain item ids!
   def createSVMFileForAllItems(): Unit ={
-    val allGenres: List[String] = GenresFeatureEngineering.getAllGenres()
-    val csvReader = CSVReader.open(moviesWithFeaturesPath)
-    val pw = new PrintWriter(new File(allMoviesSVMPath))
+    val allGenres: List[String] = new GenresFeatureEngineering(subRootDir).getAllGenres()
+    val csvReader = CSVReader.open(String.format(moviesWithFeaturesPath, subRootDir))
+    val pw = new PrintWriter(new File(String.format(allMoviesSVMPath, subRootDir)))
     val csvData = csvReader.all()
     csvData.filter(r => r(0) != "itemId" )
       .foreach(r=>{

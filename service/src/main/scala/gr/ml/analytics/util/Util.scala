@@ -6,16 +6,17 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.zip.ZipInputStream
 
 import com.typesafe.scalalogging._
-import gr.ml.analytics.util.GenresFeatureEngineering.{datasetsDirectory, smallDatasetFileName, smallDatasetUrl}
+import gr.ml.analytics.service.Constants
 import org.slf4j.LoggerFactory
 
 import scala.sys.process._
 
-object Util extends LazyLogging {
+object Util extends LazyLogging with Constants{
 
-  def loadAndUnzip(): Unit ={
-    loadResource(smallDatasetUrl, Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath)
-    unzip(Paths.get(datasetsDirectory, smallDatasetFileName).toAbsolutePath, Paths.get(datasetsDirectory).toAbsolutePath)
+  def loadAndUnzip(subRootDir:String): Unit ={
+    loadResource(smallDatasetUrl, Paths.get(String.format(datasetsDirectory, subRootDir), smallDatasetFileName).toAbsolutePath)
+    unzip(Paths.get(String.format(datasetsDirectory, subRootDir), smallDatasetFileName).toAbsolutePath,
+      Paths.get(String.format(datasetsDirectory, subRootDir)).toAbsolutePath)
   }
 
   def loadResource(url: String, path: Path) = {
