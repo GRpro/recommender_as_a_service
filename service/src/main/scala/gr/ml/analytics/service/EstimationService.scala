@@ -11,7 +11,7 @@ object EstimationService extends App with Constants{
 
 
   def divideRatingsIntoTrainAndTest(): Unit ={
-    val ratingsReader = CSVReader.open(ratingsPath)
+    val ratingsReader = CSVReader.open(ratingsPathSmall) // TODO replace with all ratings
     val allRatings = ratingsReader.all()
     ratingsReader.close()
     new File(estimationDirectoryPath).mkdirs()

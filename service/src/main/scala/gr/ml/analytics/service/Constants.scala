@@ -32,4 +32,5 @@ trait Constants {
   val testRatingsPath: String = Paths.get(datasetsDirectory, "estimation", "test-ratings.csv").toAbsolutePath.toString
   val trainRatingsPathSmall: String = Paths.get(datasetsDirectory, "estimation", "train-ratings-small.csv").toAbsolutePath.toString // TODO replace small with full version
   val testRatingsPathSmall: String = Paths.get(datasetsDirectory, "estimation", "test-ratings-small.csv").toAbsolutePath.toString // TODO replace small with full version
+  val ratingsPathSmall: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
 }
