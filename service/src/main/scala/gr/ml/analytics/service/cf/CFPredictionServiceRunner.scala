@@ -14,9 +14,6 @@ object CFPredictionService extends Constants {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
 
-  val sparkSession = SparkUtil.sparkSession()
-  import sparkSession.implicits._
-
   def getUserIdsFromLastNRatings(lastN: Int): Set[Int] = {
     val reader = CSVReader.open(ratingsPath)
     val allUserIds = reader.all().filter(r => r(0) != "userId").map(r => r(0).toInt)
@@ -26,6 +23,7 @@ object CFPredictionService extends Constants {
   }
 
   def persistPopularItemIDS(): Unit ={
+    println("persistPopularItemIDS")
     val ratingsReader = CSVReader.open(ratingsPath)
     val allRatings = ratingsReader.all()
     ratingsReader.close()
@@ -68,7 +66,7 @@ object CFPredictionService extends Constants {
       .setMaxIter(5) // TODO extract into settable fields
       .setRegParam(0.01) // TODO extract into settable fields
       .setUserCol("userId")
-      .setItemCol("movieId")
+      .setItemCol("itemId")
       .setRatingCol("rating")
 
     val model = als.fit(ratingsDF)
@@ -77,7 +75,9 @@ object CFPredictionService extends Constants {
 
 
   def readModel(): ALSModel ={
-    ALSModel.load(collaborativeModelPath)
+    val spark = SparkUtil.sparkSession()
+    val model = ALSModel.load(collaborativeModelPath)
+    model
   }
 
   def writeModel(model: ALSModel): Unit = {
@@ -86,7 +86,7 @@ object CFPredictionService extends Constants {
 
   def loadRatings(): DataFrame = {
     val ratingsDF = {
-      val ratingsStringDF = sparkSession.read
+      val ratingsStringDF = SparkUtil.sparkSession().read
         .format("com.databricks.spark.csv")
         .option("header", "true")
         .option("mode", "DROPMALFORMED")
@@ -95,7 +95,7 @@ object CFPredictionService extends Constants {
 
       ratingsStringDF
         .withColumn("userId", toInt(ratingsStringDF("userId")))
-        .withColumn("movieId", toInt(ratingsStringDF("movieId")))
+        .withColumn("itemId", toInt(ratingsStringDF("movieId"))) // an attempt to name the movieId column as itemId
         .withColumn("rating", toDouble(ratingsStringDF("rating")))
     }
     ratingsDF
@@ -125,6 +125,8 @@ object CFPredictionService extends Constants {
   }
 
   def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
+      val sparkSession = SparkUtil.sparkSession()
+      import sparkSession.implicits._
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
@@ -134,6 +136,8 @@ object CFPredictionService extends Constants {
   }
 
   def calculatePredictedIdsForUser(userId: Int, model: ALSModel): List[Int] = {
+    val sparkSession = SparkUtil.sparkSession()
+    import sparkSession.implicits._
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
@@ -156,6 +160,8 @@ object CFPredictionService extends Constants {
   }
 
   def getUserMoviePairsToRate(userId: Int): DataFrame = {
+    val sparkSession = SparkUtil.sparkSession()
+    import sparkSession.implicits._
     val itemIDsNotRateByUser = getItemIDsNotRatedByUser(userId)
     val userMovieList: List[(Int, Int)] = itemIDsNotRateByUser.map(itemId => (userId, itemId))
     userMovieList.toDF("userId", "itemId")
@@ -163,7 +169,7 @@ object CFPredictionService extends Constants {
 
   def getAllItemIDs(): List[Int] ={
     val reader = CSVReader.open(moviesPath)
-    val allItemIds = reader.all().filter(r=>r(0)!="itemId").map(r=>r(0).toInt)
+    val allItemIds = reader.all().filter(r=>r(0)!="movieId").map(r=>r(0).toInt) // in MovieLens dataset it is movieId not itemId
     reader.close()
     allItemIds
   }
