@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import gr.ml.analytics.service.ItemService
 import spray.json.DefaultJsonProtocol._
+import gr.ml.analytics.service.JsonSerDeImplicits._
 
 class ItemsAPI(val itemService: ItemService) {
 

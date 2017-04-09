@@ -4,28 +4,21 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.typesafe.config.{Config, ConfigFactory}
+import Configuration._
 import gr.ml.analytics.api.{ItemsAPI, RecommenderAPI}
+import gr.ml.analytics.cassandra.CassandraConnector
 import gr.ml.analytics.service.{ItemService, ItemServiceImpl, RecommenderService, RecommenderServiceImpl}
 
 import scala.io.StdIn
 
 
-trait ConfigKeys {
-  val serviceItemsListenerIface = "service.items.listener.iface"
-  val serviceItemsListenerPort = "service.items.listener.port"
 
-  val serviceRecommenderListenerIface = "service.recommender.listener.iface"
-  val serviceRecommenderListenerPort = "service.recommender.listener.port"
-}
 
 
 /**
   * Application entry point
   */
-object Application extends App with ConfigKeys {
-
-  val config: Config = ConfigFactory.load("application.conf")
+object Application extends App {
 
   implicit val system = ActorSystem("recommendation-service")
   implicit val materializer = ActorMaterializer()
@@ -34,8 +27,15 @@ object Application extends App with ConfigKeys {
 
   val log = Logging(system, getClass)
 
+
+  def cassandraConnector = CassandraConnector(
+    cassandraHosts,
+    cassandraKeyspace,
+    Some(cassandraUsername),
+    Some(cassandraPassword))
+
   // create services
-  val recommenderService: RecommenderService = new RecommenderServiceImpl()
+  val recommenderService: RecommenderService = new RecommenderServiceImpl(cassandraConnector)
   var itemsService: ItemService = new ItemServiceImpl()
 
   // create apis
@@ -43,12 +43,12 @@ object Application extends App with ConfigKeys {
   val itemsApi = new ItemsAPI(itemsService)
 
   val recommenderAPIBindingFuture = Http().bindAndHandle(recommenderApi.route,
-    interface = config.getString(serviceRecommenderListenerIface),
-    port = config.getInt(serviceRecommenderListenerPort))
+    interface = serviceRecommenderListenerInterface,
+    port = serviceRecommenderListenerPort)
 
   val itemsAPIBindingFuture = Http().bindAndHandle(itemsApi.route,
-    interface = config.getString(serviceItemsListenerIface),
-    port = config.getInt(serviceItemsListenerPort))
+    interface = serviceItemsListenerInterface,
+    port = serviceItemsListenerPort)
 
   StdIn.readLine() // let it run until user presses return
 

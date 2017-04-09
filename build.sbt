@@ -30,6 +30,7 @@ val buildInfoSettings = Seq(
 )
 
 // dependency versions
+
 val akkaVersion = "2.4.17"
 val akkaHttpVersion = "10.0.5"
 val phantomVersion = "2.1.3"
@@ -59,6 +60,9 @@ lazy val common = project.in(file("common"))
         |Common utilities and services shared across modules inside recommender as a service software.
       """.stripMargin
   )
+  .settings(
+    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion
+  )
 
 lazy val api = project.in(file("api"))
   .settings(commonSettings: _*)
@@ -83,8 +87,6 @@ lazy val api = project.in(file("api"))
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
     ),
-//    libraryDependencies += "io.spray" %% "spray-routing-shapeless2" % "1.3.2",
-      //    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
@@ -114,7 +116,6 @@ lazy val service = project.in(file("service"))
       "org.apache.spark" %% "spark-core" % sparkVersion,
       "org.apache.spark" %% "spark-mllib" % sparkVersion
     ),
-//    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
@@ -122,7 +123,6 @@ lazy val service = project.in(file("service"))
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
   .dependsOn(common)
-
 
 // Add any command aliases that may be useful as shortcuts
 addCommandAlias("cct", ";clean;compile;test")

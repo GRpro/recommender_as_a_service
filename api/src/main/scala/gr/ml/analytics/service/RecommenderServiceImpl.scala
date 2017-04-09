@@ -1,18 +1,33 @@
 package gr.ml.analytics.service
 
-import com.github.tototoshi.csv.{CSVReader, CSVWriter}
-import gr.ml.analytics.util.CSVtoSVMConverter
+import com.github.tototoshi.csv.CSVReader
+import com.typesafe.scalalogging.LazyLogging
+import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
+import gr.ml.analytics.domain.Rating
 
-class RecommenderServiceImpl extends RecommenderService with Constants {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class RecommenderServiceImpl(cassandraConnector: => CassandraConnector) extends RecommenderService with Constants with LazyLogging {
+
+  private lazy val ratingModel = new InputDatabase(cassandraConnector.connector).ratingModel
 
   /**
     * @inheritdoc
     */
   override def save(userId: Int, itemId: Int, rating: Double): Unit = {
-    val writer = CSVWriter.open(ratingsPath, append = true)
-    writer.writeRow(List(userId.toString, itemId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
-    writer.close()
-    CSVtoSVMConverter.createSVMRatingsFileForUser(userId)
+    val ratingEntity = Rating(userId, itemId, rating)
+    ratingModel.save(ratingEntity)
+
+    logger.info(s"saved $ratingEntity")
+
+//    ratingModel.getAll.onSuccess {
+//      case list => list.foreach(e => println("stored " + e))
+//    }
+
+//    val writer = CSVWriter.open(ratingsPath, append = true)
+//    writer.writeRow(List(userId.toString, itemId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
+//    writer.close()
+//    CSVtoSVMConverter.createSVMRatingsFileForUser(userId)
   }
 
   /**

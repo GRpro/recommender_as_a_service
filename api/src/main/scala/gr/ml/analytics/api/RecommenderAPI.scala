@@ -4,8 +4,10 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import gr.ml.analytics.service.{Rating, RecommenderService}
+import gr.ml.analytics.domain.Rating
+import gr.ml.analytics.service.RecommenderService
 import spray.json.DefaultJsonProtocol._
+import gr.ml.analytics.service.JsonSerDeImplicits._
 
 class RecommenderAPI(val ratingService: RecommenderService) {
 

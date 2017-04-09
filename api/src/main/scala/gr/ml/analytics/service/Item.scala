@@ -1,15 +1,14 @@
 package gr.ml.analytics.service
 
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import gr.ml.analytics.domain.Rating
+import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
 case class Item(itemId: Int)
 
-object Item extends DefaultJsonProtocol {
-  implicit val itemFormat: RootJsonFormat[Item] = jsonFormat1(Item.apply)
-}
+object Item
 
-case class Rating(userId: Int, itemId: Int, rating: Double)
-
-object Rating extends DefaultJsonProtocol {
+object JsonSerDeImplicits {
   implicit val ratingFormat: RootJsonFormat[Rating] = jsonFormat3(Rating.apply)
+  implicit val itemFormat: RootJsonFormat[Item] = jsonFormat1(Item.apply)
 }
