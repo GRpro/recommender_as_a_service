@@ -1,38 +1,27 @@
 package gr.ml.analytics.api
 
-import akka.actor.{Actor, ActorRefFactory}
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import gr.ml.analytics.service.ItemService
-import spray.http.MediaTypes
-import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
-import spray.routing.ExceptionHandler._
-import spray.routing.{HttpService, RoutingSettings}
 
-class ItemsAPI(val service: ItemService) extends Actor with HttpService {
+class ItemsAPI(val itemService: ItemService) {
 
-  implicit val routingSettings = RoutingSettings.default(context)
-
-  override implicit def actorRefFactory: ActorRefFactory = context
-
-  override def receive: Receive = runRoute(moviesRoute)
-
-
-  private def moviesRoute = {
-    respondWithMediaType(MediaTypes.`application/json`) {
-
-      path("items" / IntNumber) { itemId =>
-        get {
-          complete {
-            service.get(itemId)
-          }
+  val route: Route =
+    path("items" / IntNumber) { itemId =>
+      get {
+        complete {
+          itemService.get(itemId)
         }
-      } ~
+      }
+    } ~
       path("items") {
         get {
           parameter('id.as[String]) { id =>
             complete {
               val ids: List[Int] = id.split(",").map(_.toInt).toList
-              service.get(ids)
+              itemService.get(ids)
             }
           }
         }
@@ -47,6 +36,4 @@ class ItemsAPI(val service: ItemService) extends Actor with HttpService {
           }
         }
       }
-    }
-  }
 }

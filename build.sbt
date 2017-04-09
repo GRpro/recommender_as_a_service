@@ -30,9 +30,8 @@ val buildInfoSettings = Seq(
 )
 
 // dependency versions
-
-val sprayVersion = "1.3.2"
-val akkaVersion = "2.4.2"
+val akkaVersion = "2.4.17"
+val akkaHttpVersion = "10.0.5"
 val phantomVersion = "2.1.3"
 val sparkVersion = "2.0.1"
 
@@ -74,23 +73,18 @@ lazy val api = project.in(file("api"))
   .settings(
 
     resolvers ++= Seq(
-      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-      "Spray Repository" at "http://repo.spray.io"
+      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
 
     libraryDependencies ++= Seq(
-      "io.spray" %% "spray-can" % sprayVersion,
-      "io.spray" %% "spray-routing" % sprayVersion,
-      "io.spray" %% "spray-json" % sprayVersion,
-      "io.spray" %% "spray-client" % sprayVersion,
-      "io.spray" %% "spray-testkit" % sprayVersion % "test"
-    ),
-    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
     ),
-//    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
+//    libraryDependencies += "io.spray" %% "spray-routing-shapeless2" % "1.3.2",
+      //    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
