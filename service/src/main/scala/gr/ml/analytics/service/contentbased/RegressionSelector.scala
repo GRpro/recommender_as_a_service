@@ -52,7 +52,7 @@ object RegressionSelector extends App with Constants {
     val predictions = model.transform(testData)
 
     val numberOfPositivelyRated = testData.filter($"label" >= 4.0).count().toInt
-    val tp = predictions.orderBy(col("prediction").desc)
+    val tp = predictions.orderBy(col("rating").desc)
       .limit(numberOfPositivelyRated)
       .filter($"label" >= 4.0).count()
 

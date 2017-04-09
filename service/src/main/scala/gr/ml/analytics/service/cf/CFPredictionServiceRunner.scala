@@ -113,7 +113,8 @@ class CFPredictionService(val subRootDir: String) extends Constants {
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
       .filter(not(isnan($"prediction")))
-      .orderBy(col("prediction").desc)
+      .select($"itemId", $"prediction".as("rating"))
+      .orderBy(col("rating").desc)
     predictions
   }
 
@@ -123,8 +124,8 @@ class CFPredictionService(val subRootDir: String) extends Constants {
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
-      .filter(not(isnan($"prediction")))
-      .orderBy(col("prediction").desc)
+      .filter(not(isnan($"rating")))
+      .orderBy(col("rating").desc)
     val predictedItemIds: List[Int] = predictions.select("itemId").map(row => row.getInt(0)).collect().toList
     predictedItemIds
   }

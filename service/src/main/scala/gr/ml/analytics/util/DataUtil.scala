@@ -26,11 +26,11 @@ class DataUtil(val subRootDir: String) extends Constants{
 
   def persistPredictionsForUser(userId: Int, predictions: DataFrame, path: String): Unit = {
     val predictionsHeaderWriter = CSVWriter.open(path, append = false)
-    predictionsHeaderWriter.writeRow(List("userId","itemId","prediction"))
+    predictionsHeaderWriter.writeRow(List("userId","itemId","rating"))
     predictionsHeaderWriter.close()
 
     val predictionsWriter = CSVWriter.open(String.format(path), append = true)
-    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("itemId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
+    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("itemId")).toString.toDouble.toInt,r(r.fieldIndex("rating")))).collect()
     predictionsWriter.writeAll(predictionsList)
     predictionsWriter.close()
   }

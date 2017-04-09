@@ -51,8 +51,8 @@ class CBPredictionService(subRootDir: String) extends Constants {
     val readModel = PipelineModel.load(String.format(contentBasedModelForUserPath, subRootDir, userId.toString))
     val notRatedItems = getItemsNotRateByUserSVM(userId)
     val predictions = readModel.transform(notRatedItems)
-      .select($"label".as("itemId"), $"prediction")
-      .sort($"prediction".desc)
+      .select($"label".as("itemId"), $"prediction".as("rating"))
+      .sort($"rating".desc)
     new File(String.format(contentBasedPredictionsDirectoryPath, subRootDir)).mkdirs()
     dataUtil.persistPredictionsForUser(userId, predictions,
       String.format(contentBasedPredictionsForUserPath, subRootDir, userId.toString))

@@ -8,9 +8,7 @@ import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressi
 import gr.ml.analytics.util.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
 import org.slf4j.LoggerFactory
 
-class HybridService(subRootDir: String, lastNRatings: Int) extends Constants{
-  val collaborativeWeight = 1.0
-  val contentBasedWeight = 1.0
+class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: Double, contentBasedWeight: Double) extends Constants{
 
   val dataUtil = new DataUtil(subRootDir)
   val cfPredictionService = new CFPredictionService(subRootDir)
@@ -77,7 +75,7 @@ class HybridService(subRootDir: String, lastNRatings: Int) extends Constants{
       .map(t=>t._2).toList.sortWith((l,r) => l(2).toDouble > r(2).toDouble)
 
     val finalPredictionsHeaderWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, subRootDir, userId.toString), append = false)
-    finalPredictionsHeaderWriter.writeRow(List("userId", "itemId", "prediction"))
+    finalPredictionsHeaderWriter.writeRow(List("userId", "itemId", "rating"))
     finalPredictionsHeaderWriter.close()
     val finalPredictionsWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, subRootDir, userId.toString), append = true)
     finalPredictionsWriter.writeAll(hybridPredictions)
@@ -90,5 +88,5 @@ class HybridService(subRootDir: String, lastNRatings: Int) extends Constants{
 
 object HybridServiceRunner extends App with Constants{
   Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
-  new HybridService(mainSubDir, 1000).run()
+  new HybridService(mainSubDir, 1000, 1.0, 1.0).run()
 }
