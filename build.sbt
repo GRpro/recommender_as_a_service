@@ -60,9 +60,6 @@ lazy val common = project.in(file("common"))
         |Common utilities and services shared across modules inside recommender as a service software.
       """.stripMargin
   )
-  .settings(
-    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion
-  )
 
 lazy val api = project.in(file("api"))
   .settings(commonSettings: _*)
@@ -87,6 +84,7 @@ lazy val api = project.in(file("api"))
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
     ),
+    libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
@@ -108,7 +106,8 @@ lazy val service = project.in(file("service"))
   .settings(
     resolvers ++= Seq(
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-      "Spray Repository" at "http://repo.spray.io"
+      "Spray Repository" at "http://repo.spray.io",
+      "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven"
     ),
 
     libraryDependencies ++= Seq(
@@ -116,6 +115,8 @@ lazy val service = project.in(file("service"))
       "org.apache.spark" %% "spark-core" % sparkVersion,
       "org.apache.spark" %% "spark-mllib" % sparkVersion
     ),
+    libraryDependencies += "datastax" % "spark-cassandra-connector" % "2.0.1-s_2.11",
+    libraryDependencies += "com.typesafe" % "config" % "1.3.1",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",

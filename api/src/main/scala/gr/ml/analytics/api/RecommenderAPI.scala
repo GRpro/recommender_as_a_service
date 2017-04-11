@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import gr.ml.analytics.domain.Rating
 import gr.ml.analytics.service.RecommenderService
 import spray.json.DefaultJsonProtocol._
-import gr.ml.analytics.service.JsonSerDeImplicits._
+import gr.ml.analytics.domain.JsonSerDeImplicits._
 
 class RecommenderAPI(val ratingService: RecommenderService) {
 

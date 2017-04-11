@@ -2,6 +2,7 @@ package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.CSVReader
 import com.typesafe.scalalogging.LazyLogging
+import gr.ml.analytics.Constants
 import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
 import gr.ml.analytics.domain.Rating
 
@@ -23,16 +24,12 @@ class RecommenderServiceImpl(cassandraConnector: => CassandraConnector) extends 
 //    ratingModel.getAll.onSuccess {
 //      case list => list.foreach(e => println("stored " + e))
 //    }
-
-//    val writer = CSVWriter.open(ratingsPath, append = true)
-//    writer.writeRow(List(userId.toString, itemId.toString,rating.toString, (System.currentTimeMillis / 1000).toString))
-//    writer.close()
-//    CSVtoSVMConverter.createSVMRatingsFileForUser(userId)
   }
 
   /**
     * @inheritdoc
     */
+  // TODO implement when migrate to cassandra
   override def getTop(userId: Int, n: Int): List[Int] = {
     val predictionsReader = CSVReader.open(predictionsPath)
     val allPredictions = predictionsReader.all()
