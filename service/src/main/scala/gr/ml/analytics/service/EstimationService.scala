@@ -1,7 +1,7 @@
 package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
-import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, RandomForestEstimatorBuilder}
+import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util.{DataUtil, Util}
 
 object EstimationService extends App with Constants{
@@ -13,18 +13,24 @@ object EstimationService extends App with Constants{
   Util.loadAndUnzip(subRootDir)
   divideRatingsIntoTrainAndTest()
   val numberOfTrainRatings = getNumberOfTrainRatings()
-  val hb = new HybridService(subRootDir, numberOfTrainRatings, 0.0, 1.0)
+  val hb = new HybridService(subRootDir, numberOfTrainRatings, 1.0, 1.0)
   hb.prepareNecessaryFiles()
 
-  //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
+        val cbPipeline = LinearRegressionWithElasticNetBuilder.build(subRootDir)
 //  val cbPipeline = RandomForestEstimatorBuilder.build(subRootDir)
-  val cbPipeline = DecisionTreeRegressionBuilder.build(subRootDir)
+//  val cbPipeline = DecisionTreeRegressionBuilder.build(subRootDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
 
   hb.runOneCycle(cbPipeline)
 
-  val accuracy = estimateAccuracy(upperFraction, lowerFraction)
-  println("Estimated Accuracy is = " + accuracy)
+  // TODO can I use more functional style here ?
+  for(i <- 0.0 to 1 by 0.05){
+    for(j <- 0.0 to 1 by 0.05){
+      hb.combinePredictionsForLastUsers(i, j)
+      val accuracy = estimateAccuracy(upperFraction, lowerFraction)
+      println("DecisionTree:: Weights: " + i + ", " + j + " => Accuracy: " + accuracy)
+    }
+  }
 
   def divideRatingsIntoTrainAndTest(): Unit ={
     val ratingsReader = CSVReader.open(String.format(ratingsPathSmall, subRootDir)) // TODO replace with all ratings

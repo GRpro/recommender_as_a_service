@@ -22,6 +22,7 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     while(true){
       Thread.sleep(5000) // can be increased for production
       runOneCycle(cbPipeline)
+      combinePredictionsForLastUsers(collaborativeWeight, contentBasedWeight)
     }
 
   }
@@ -47,7 +48,6 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
       Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
       Util.tryAndLog(cfPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Collaborative:: Updating predictions for User " + userId)
       Util.tryAndLog(cbPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Content-based:: Updating predictions for User " + userId)
-      Util.tryAndLog(combinePredictionsForUser(userId), subRootDir + " :: Hybrid:: Combining CF and CB predictions for user " + userId)
       LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: ##################### END OF ITERATION ##########################")
     }
   }
@@ -56,7 +56,15 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     predictions.map(l=>List(l(0), l(1), (l(2).toDouble * weight).toString))
   }
 
-  def combinePredictionsForUser(userId: Int): Unit ={
+  def combinePredictionsForLastUsers(collaborativeWeight: Double, contentBasedWeight: Double): Unit ={
+    val userIds = dataUtil.getUserIdsFromLastNRatings(lastNRatings)
+    for(userId <- userIds){
+//      Util.tryAndLog(combinePredictionsForUser(userId, collaborativeWeight, contentBasedWeight), subRootDir + " :: Hybrid:: Combining CF and CB predictions for user " + userId)
+      combinePredictionsForUser(userId, collaborativeWeight, contentBasedWeight)
+    }
+  }
+
+  def combinePredictionsForUser(userId: Int, collaborativeWeight: Double, contentBasedWeight: Double): Unit ={
     new File(String.format(finalPredictionsDirectoryPath, subRootDir)).mkdirs()
     val collaborativeReader = CSVReader.open(String.format(collaborativePredictionsForUserPath, subRootDir, userId.toString))
     val collaborativePredictions = collaborativeReader.all().filter(l=>l(0)!="userId")
@@ -91,6 +99,6 @@ object HybridServiceRunner extends App with Constants{
   //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
   val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
-
-  new HybridService(mainSubDir, 1000, 1.0, 1.0).run(cbPipeline)
+  val hb = new HybridService(mainSubDir, 1000, 1.0, 1.0)
+  hb.run(cbPipeline)
 }
