@@ -20,8 +20,8 @@ class CBPredictionService(subRootDir: String) extends Constants {
     val userIds = dataUtil.getUserIdsFromLastNRatings(1000)
 
     for(userId <- userIds){
-      val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
-      //    val pipeline = RandomForestEstimatorBuilder.build(userId) // RF estimator needs to index all features first! Cannot pass random data in it!
+//      val pipeline = LinearRegressionWithElasticNetBuilder.build(subRootDir)
+          val pipeline = RandomForestEstimatorBuilder.build(subRootDir)
       Util.tryAndLog(updateModelForUser(pipeline, userId), "Content-based:: Updating model for user " + userId)
       Util.tryAndLog(updatePredictionsForUser(userId), "Content-based:: Updating predictions for User " + userId)
     }

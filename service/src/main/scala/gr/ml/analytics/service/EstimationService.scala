@@ -1,24 +1,29 @@
 package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
+import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util.{DataUtil, Util}
 
 object EstimationService extends App with Constants{
   val trainFraction = 0.7
-  val upperFraction = 0.5 // TODO test with other values
-  val lowerFraction = 0.5
-  val subRootDir = "estimation"
+  val upperFraction = 0.4 // TODO test with other values
+  val lowerFraction = 0.4
+  val subRootDir = "checking-cb-range"
 
   Util.loadAndUnzip(subRootDir)
   divideRatingsIntoTrainAndTest()
   val numberOfTrainRatings = getNumberOfTrainRatings()
-  val hb = new HybridService(subRootDir, numberOfTrainRatings, 1.0, 1.0)
+  val hb = new HybridService(subRootDir, numberOfTrainRatings, 0.0, 1.0)
   hb.prepareNecessaryFiles()
-  hb.runOneCycle()
 
-  // TODO check that all prediction colums are renamed to rating
+  //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
+//  val cbPipeline = RandomForestEstimatorBuilder.build(subRootDir)
+  val cbPipeline = DecisionTreeRegressionBuilder.build(subRootDir)
+  //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
+
+  hb.runOneCycle(cbPipeline)
+
   val accuracy = estimateAccuracy(upperFraction, lowerFraction)
-
   println("Estimated Accuracy is = " + accuracy)
 
   def divideRatingsIntoTrainAndTest(): Unit ={

@@ -24,11 +24,11 @@ import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.regression.RandomForestRegressor
 
 object RandomForestEstimatorBuilder extends Constants {
-    def build(userId: Int): Pipeline ={
+    def build(subRootDir: String): Pipeline ={
     val spark = SparkUtil.sparkSession()
     // Load and parse the data file, converting it to a DataFrame.
     val data = spark.read.format("libsvm")
-      .load(String.format(ratingsWithFeaturesSVMPath, userId.toString))
+      .load(String.format(allMoviesSVMPath, subRootDir))
 
     // Automatically identify categorical features, and index them.
     // Set maxCategories so features with > 4 distinct values are treated as continuous.

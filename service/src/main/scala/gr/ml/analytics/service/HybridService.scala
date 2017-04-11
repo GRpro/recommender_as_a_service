@@ -4,8 +4,9 @@ import java.io.File
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.cf.CFPredictionService
-import gr.ml.analytics.service.contentbased.{CBPredictionService, LinearRegressionWithElasticNetBuilder}
+import gr.ml.analytics.service.contentbased.{CBPredictionService, GeneralizedLinearRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
+import org.apache.spark.ml.Pipeline
 import org.slf4j.LoggerFactory
 
 class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: Double, contentBasedWeight: Double) extends Constants{
@@ -15,12 +16,12 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
   val cbPredictionService = new CBPredictionService(subRootDir)
   val csv2svmConverter = new CSVtoSVMConverter(subRootDir)
 
-  def run(): Unit ={
+  def run(cbPipeline: Pipeline): Unit ={
     prepareNecessaryFiles()
 
     while(true){
       Thread.sleep(5000) // can be increased for production
-      runOneCycle()
+      runOneCycle(cbPipeline)
     }
 
   }
@@ -39,12 +40,11 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: Startup time took: " + (finishTime - startTime) + " millis.")
   }
 
-  def runOneCycle(): Unit ={
+  def runOneCycle(cbPipeline: Pipeline): Unit ={
     Util.tryAndLog(cfPredictionService.updateModel(), subRootDir + " :: Collaborative:: Updating model")
     val userIds = dataUtil.getUserIdsFromLastNRatings(lastNRatings)
     for(userId <- userIds){
-      val pipeline = LinearRegressionWithElasticNetBuilder.build(userId)
-      Util.tryAndLog(cbPredictionService.updateModelForUser(pipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
+      Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
       Util.tryAndLog(cfPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Collaborative:: Updating predictions for User " + userId)
       Util.tryAndLog(cbPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Content-based:: Updating predictions for User " + userId)
       Util.tryAndLog(combinePredictionsForUser(userId), subRootDir + " :: Hybrid:: Combining CF and CB predictions for user " + userId)
@@ -88,5 +88,9 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
 
 object HybridServiceRunner extends App with Constants{
   Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
-  new HybridService(mainSubDir, 1000, 1.0, 1.0).run()
+  //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
+  val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
+  //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
+
+  new HybridService(mainSubDir, 1000, 1.0, 1.0).run(cbPipeline)
 }

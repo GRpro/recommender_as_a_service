@@ -19,22 +19,23 @@ package gr.ml.analytics.service.contentbased
 
 import gr.ml.analytics.util.SparkUtil
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.regression.LinearRegression
+import org.apache.spark.ml.regression.GeneralizedLinearRegression
 
-
-object LinearRegressionWithElasticNetBuilder {
+// TODO this one fails - assertion failed: lapack.dppsv returned 7.
+object GeneralizedLinearRegressionBuilder {
 
   // TODO path is NOT actually used...
   def build(path: String): Pipeline = {
     val spark = SparkUtil.sparkSession()
 
-    val lr = new LinearRegression()
+    val glr = new GeneralizedLinearRegression()
+      .setFamily("gaussian")
+      .setLink("identity")
       .setMaxIter(10)
       .setRegParam(0.3)
-      .setElasticNetParam(0.8)
 
     val pipeline = new Pipeline()
-      .setStages(Array(lr))
+      .setStages(Array(glr))
 
     spark.stop()
 
