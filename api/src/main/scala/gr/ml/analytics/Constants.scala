@@ -1,4 +1,4 @@
-package gr.ml.analytics.service
+package gr.ml.analytics
 
 import java.nio.file.Paths
 

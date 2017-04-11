@@ -6,7 +6,7 @@ import com.outworkers.phantom.CassandraTable
 import com.outworkers.phantom.dsl.{ConsistencyLevel, DoubleColumn, IntColumn, PartitionKey, RootConnector, Row, _}
 import gr.ml.analytics.domain.Rating
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
 /**
   * Cassandra representation of the Ratings table

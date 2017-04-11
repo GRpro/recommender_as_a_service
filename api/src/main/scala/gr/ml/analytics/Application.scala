@@ -36,7 +36,7 @@ object Application extends App {
 
   // create services
   val recommenderService: RecommenderService = new RecommenderServiceImpl(cassandraConnector)
-  var itemsService: ItemService = new ItemServiceImpl()
+  var itemsService: ItemService = new ItemServiceImpl(cassandraConnector)
 
   // create apis
   val recommenderApi = new RecommenderAPI(recommenderService)

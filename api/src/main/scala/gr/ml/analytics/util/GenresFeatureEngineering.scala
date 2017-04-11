@@ -1,7 +1,7 @@
 package gr.ml.analytics.util
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
-import gr.ml.analytics.service.Constants
+import gr.ml.analytics.Constants
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.ListMap

@@ -1,12 +1,7 @@
-package gr.ml.analytics.service
+package gr.ml.analytics.domain
 
-import gr.ml.analytics.domain.Rating
-import spray.json.DefaultJsonProtocol._
 import spray.json.RootJsonFormat
-
-case class Item(itemId: Int)
-
-object Item
+import spray.json.DefaultJsonProtocol._
 
 object JsonSerDeImplicits {
   implicit val ratingFormat: RootJsonFormat[Rating] = jsonFormat3(Rating.apply)
