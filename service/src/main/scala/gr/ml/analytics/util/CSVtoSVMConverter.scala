@@ -32,7 +32,8 @@ class CSVtoSVMConverter(subRootDir: String) extends Constants {
     allRatings.filter(r => r(0) == userId.toString)
       .foreach(r=>{
         val itemId = r(1)
-        var svmString: String = itemId
+        val rating = r(2)
+        var svmString: String = rating
         val featuresList = allItems.filter(l=>l(0)==itemId)(0).drop(1)
         featuresList.zipWithIndex.foreach(t=>svmString+=(" "+(t._2+1)+":"+t._1))
         pw.println(svmString)
