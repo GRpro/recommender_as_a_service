@@ -3,12 +3,13 @@ package gr.ml.analytics.service
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util.{DataUtil, Util}
+import org.apache.spark.ml.Pipeline
 
 object EstimationService extends App with Constants{
   val trainFraction = 0.7
-  val upperFraction = 0.4 // TODO test with other values
+  val upperFraction = 0.4
   val lowerFraction = 0.4
-  val subRootDir = "checking-cb-range"
+  val subRootDir = "precision"
 
   Util.loadAndUnzip(subRootDir)
   divideRatingsIntoTrainAndTest()
@@ -16,21 +17,30 @@ object EstimationService extends App with Constants{
   val hb = new HybridService(subRootDir, numberOfTrainRatings, 1.0, 1.0)
   hb.prepareNecessaryFiles()
 
-        val cbPipeline = LinearRegressionWithElasticNetBuilder.build(subRootDir)
-//  val cbPipeline = RandomForestEstimatorBuilder.build(subRootDir)
-//  val cbPipeline = DecisionTreeRegressionBuilder.build(subRootDir)
-  //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
+  var bestAccuracy = 0.0
+  var bestParams = (0.0, 0.0)
+  var bestCBPipeline: Pipeline = null
 
-  hb.runOneCycle(cbPipeline)
+  val pipelines:List[Pipeline] = List(
+    LinearRegressionWithElasticNetBuilder.build(subRootDir),
+    RandomForestEstimatorBuilder.build(subRootDir),
+    DecisionTreeRegressionBuilder.build(subRootDir))
 
-  // TODO can I use more functional style here ?
-  for(i <- 0.0 to 1 by 0.05){
-    for(j <- 0.0 to 1 by 0.05){
-      hb.combinePredictionsForLastUsers(i, j)
+  pipelines.foreach(pipeline => {
+    hb.runOneCycle(pipeline)
+    (0.0 to 1.0 by 0.01).foreach(i=>{
+      hb.combinePredictionsForLastUsers(i, 1-i)
       val accuracy = estimateAccuracy(upperFraction, lowerFraction)
-      println("DecisionTree:: Weights: " + i + ", " + j + " => Accuracy: " + accuracy)
-    }
-  }
+      println("LinearRegressionWithElasticNetBuilder:: Weights: " + i + ", " + (1-i) + " => Accuracy: " + accuracy)
+      if(accuracy > bestAccuracy){
+        bestAccuracy = accuracy
+        bestParams = (i, 1-i)
+        bestCBPipeline = pipeline
+      }
+    })
+  })
+
+  println("Best Accuracy is " + bestAccuracy + " for pipeline: " + bestCBPipeline.getStages +  " and params " + bestParams)
 
   def divideRatingsIntoTrainAndTest(): Unit ={
     val ratingsReader = CSVReader.open(String.format(ratingsPathSmall, subRootDir)) // TODO replace with all ratings
