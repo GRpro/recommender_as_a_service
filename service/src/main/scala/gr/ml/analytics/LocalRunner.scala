@@ -9,6 +9,7 @@ import org.apache.spark.sql.SparkSession
   */
 object LocalRunner {
 
+  val ITERATIVE = false
   val INTERVAL_MS = 5000
 
   def getSparkSession: SparkSession = {
@@ -26,11 +27,12 @@ object LocalRunner {
 
     val collaborativeFilteringJob = new CFJob(spark, config)
 
-    while (true) {
-
+    do {
       collaborativeFilteringJob.run()
 
       Thread.sleep(INTERVAL_MS)
-    }
+
+    } while(ITERATIVE)
+
   }
 }

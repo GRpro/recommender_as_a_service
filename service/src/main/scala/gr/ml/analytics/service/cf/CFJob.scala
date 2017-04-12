@@ -1,12 +1,12 @@
 package gr.ml.analytics.service.cf
 
-import com.github.tototoshi.csv.CSVReader
 import com.typesafe.config.Config
 import gr.ml.analytics.cassandra.CassandraConnector
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.util.SparkUtil
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.cassandra._
+import com.datastax.spark.connector._
 
 /**
   * Calculates ratings for missing user-item pairs using ALS collaborative filtering algorithm
@@ -18,56 +18,26 @@ class CFJob(val sparkSession: SparkSession,
 
   import CFJob._
 
-  private val itemsTable: String = config.getString("cassandra.items_table")
+  private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
   private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val keyspace: String = config.getString("cassandra.keyspace")
+
+  private val minimumPositiveRating = 3.0
+
+  private val userIdCol = "userid"
+  private val itemIdCol = "itemid"
+  private val ratingCol = "rating"
 
   private def trainModel(spark: SparkSession, ratingsDF: DataFrame): ALSModel = {
     val als = new ALS()
       .setMaxIter(5) // TODO extract into settable fields
       .setRegParam(0.01) // TODO extract into settable fields
-      .setUserCol("userId")
-      .setItemCol("itemId")
-      .setRatingCol("rating")
+      .setUserCol(userIdCol)
+      .setItemCol(itemIdCol)
+      .setRatingCol(ratingCol)
 
     als.fit(ratingsDF)
   }
-
-//  /**
-//    * Returns DataFrame with missing userId itemId pairs
-//    */
-//  def getNotRated(): DataFrame = {
-//
-//  }
-//
-//  def getUserMoviePairsToRate(userId: Int): DataFrame = {
-//    val sparkSession = SparkUtil.sparkSession()
-//    import sparkSession.implicits._
-//    val itemIDsNotRateByUser = getItemIDsNotRatedByUser(userId)
-//    val userMovieList: List[(Int, Int)] = itemIDsNotRateByUser.map(itemId => (userId, itemId))
-//    userMovieList.toDF("userId", "itemId")
-//  }
-//
-//  def getItemIDsNotRatedByUser(userId: Int, itemIDsDF: DataFrame): List[Int] = {
-//
-//    val allMovieIDs = getAllItemIDs()
-//    val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
-//      .map((p:List[String]) => p(1).toInt).toSet
-//    val movieIDsNotRateByUser = allMovieIDs.filter(m => !movieIdsRatedByUser.contains(m))
-//    movieIDsNotRateByUser
-//  }
-//
-//  def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
-//    val sparkSession = SparkUtil.sparkSession()
-//    import sparkSession.implicits._
-//    val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
-//    import org.apache.spark.sql.functions._
-//    val predictions = model.transform(toRateDS)
-//      .filter(not(isnan($"prediction")))
-//      .orderBy(col("prediction").desc)
-//    predictions
-//  }
-
 
   /**
     * Spark job entry point
@@ -81,23 +51,39 @@ class CFJob(val sparkSession: SparkSession,
       .options(Map( "table" -> ratingsTable, "keyspace" -> keyspace))
       .load()
 
-    val itemsDF = spark
-      .read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> itemsTable, "keyspace" -> keyspace))
-      .load()
+    ratingsDF.printSchema()
 
     val model = trainModel(spark, ratingsDF)
 
     writeModel(spark, model)
 
     val userIDs = ratingsDF
-      .select("userId")
+      .select(userIdCol)
       .distinct()
 
-    val allItemIDs = itemsDF
-      .select("itemId")
-      .distinct() // just to be on the safe size
+    val itemIDs = ratingsDF
+      .select(itemIdCol)
+      .distinct()
+
+    // Cross join operation
+    // TODO find a better way
+    val allPairsDF = itemIDs.join(userIDs)
+    val notRatedPairsDF = allPairsDF
+      .except(ratingsDF.select(userIdCol, itemIdCol))
+
+    val predictedRatingsDF = model.transform(notRatedPairsDF).filter(s"prediction > $minimumPositiveRating")
+
+    // print 1000 to console
+    predictedRatingsDF.show(1000)
+
+    // comment table creation when running the second time TODO fix
+    predictedRatingsDF.createCassandraTable(
+      keyspace,
+      cfPredictionsTable,
+      partitionKeyColumns = Some(Seq("userid", "itemid", "prediction"))
+    )
+
+    predictedRatingsDF.write.mode("overwrite").cassandraFormat(cfPredictionsTable, keyspace).save()
   }
 }
 
