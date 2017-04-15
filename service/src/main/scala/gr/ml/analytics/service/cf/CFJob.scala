@@ -1,93 +1,173 @@
 package gr.ml.analytics.service.cf
 
+import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.config.Config
-import gr.ml.analytics.cassandra.CassandraConnector
+import gr.ml.analytics.cassandra.CassandraUtil
 import gr.ml.analytics.service.Constants
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.cassandra._
-import com.datastax.spark.connector._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-/**
-  * Calculates ratings for missing user-item pairs using ALS collaborative filtering algorithm
-  * @param sparkSession
-  * @param config
-  */
-class CFJob(val sparkSession: SparkSession,
-            val config: Config) {
 
-  import CFJob._
+trait Source {
+  /**
+    * @return dataframe of (userId: Int, itemId: Int, rating: float) triples to train model
+    */
+  def all: DataFrame
 
-  private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
+  /**
+    * @return dataframe of (userId: Int, itemId: Int) pairs to predict ratings for
+    */
+  def predicted: DataFrame
+}
+
+
+trait Sink {
+  /**
+    * Store predictions dataframe
+    *
+    * @param predictions dataframe of (userId: Int, itemId: Int, prediction: float) triples
+    */
+  def store(predictions: DataFrame)
+}
+
+
+class CassandraSource(val sparkSession: SparkSession, val config: Config) extends Source {
+
   private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val keyspace: String = config.getString("cassandra.keyspace")
-
-  private val minimumPositiveRating = 3.0
 
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
   private val ratingCol = "rating"
 
-  private def trainModel(spark: SparkSession, ratingsDF: DataFrame): ALSModel = {
-    val als = new ALS()
-      .setMaxIter(5) // TODO extract into settable fields
-      .setRegParam(0.01) // TODO extract into settable fields
-      .setUserCol(userIdCol)
-      .setItemCol(itemIdCol)
-      .setRatingCol(ratingCol)
+  private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
 
-    als.fit(ratingsDF)
+  spark.conf.set("spark.sql.crossJoin.enabled", "true")
+
+  private lazy val ratingsDS = spark
+    .read
+    .format("org.apache.spark.sql.cassandra")
+    .options(Map("table" -> ratingsTable, "keyspace" -> keyspace))
+    .load()
+    .select(userIdCol, itemIdCol, ratingCol)
+
+  private lazy val userIDsDS = ratingsDS
+    .select(col(userIdCol))
+    .distinct()
+
+  private lazy val itemIDsDS = ratingsDS
+    .select(col(itemIdCol))
+    .distinct()
+
+  // TODO replace this cross join operation
+  private lazy val notRatedPairsDS = itemIDsDS
+    .join(userIDsDS)
+    .except(ratingsDS.select(col(userIdCol), col(itemIdCol)))
+
+  /**
+    * @inheritdoc
+    */
+  override def all: DataFrame = ratingsDS
+
+  /**
+    * @inheritdoc
+    */
+  override def predicted: DataFrame = notRatedPairsDS
+}
+
+
+class CassandraSink(val sparkSession: SparkSession, val config: Config) extends Sink {
+
+  private val keyspace: String = config.getString("cassandra.keyspace")
+  private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
+
+  private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
+
+  /**
+    * @inheritdoc
+    */
+  override def store(predictions: DataFrame): Unit = {
+
+    CassandraConnector(sparkSession.sparkContext).withSessionDo { session =>
+      session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication={'class':'SimpleStrategy', 'replication_factor':1}")
+      session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$cfPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
+    }
+
+    val normalized = predictions
+      .select("userId", "itemId", "prediction")
+      .toDF("userid", "itemid", "prediction").withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
+
+    normalized.show(1000)
+    normalized
+      .write.mode("overwrite")
+      .cassandraFormat(cfPredictionsTable, keyspace)
+      .save()
   }
+}
+
+
+/**
+  * Calculates ratings for missing user-item pairs using ALS collaborative filtering algorithm
+  */
+class CFJob(val sparkSession: SparkSession,
+            val config: Config,
+            val source: Source,
+            val sink: Sink) {
+
+  import CFJob._
+
+  private val minimumPositiveRating = 3.0
 
   /**
     * Spark job entry point
     */
   def run(): Unit = {
-    val spark = CassandraConnector(config).setConnectionInfo(sparkSession)
 
-    val ratingsDF = spark
-      .read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> ratingsTable, "keyspace" -> keyspace))
-      .load()
+    val allRatingsDF = source.all.select("userId", "itemId", "rating")
 
-    ratingsDF.printSchema()
+    val als = new ALS()
+      .setMaxIter(2) // TODO extract into settable fields
+      .setRegParam(0.1) // TODO extract into settable fields
+      .setUserCol("userId")
+      .setItemCol("itemId")
+      .setRatingCol("rating")
 
-    val model = trainModel(spark, ratingsDF)
+    val model = als.fit(allRatingsDF)
 
-    writeModel(spark, model)
+    writeModel(sparkSession, model)
 
-    val userIDs = ratingsDF
-      .select(userIdCol)
-      .distinct()
+    val notRatedPairsDF = source.predicted.select("userId", "itemId")
 
-    val itemIDs = ratingsDF
-      .select(itemIdCol)
-      .distinct()
-
-    // Cross join operation
-    // TODO find a better way
-    val allPairsDF = itemIDs.join(userIDs)
-    val notRatedPairsDF = allPairsDF
-      .except(ratingsDF.select(userIdCol, itemIdCol))
-
-    val predictedRatingsDF = model.transform(notRatedPairsDF).filter(s"prediction > $minimumPositiveRating")
+    val predictedRatingsDS = model.transform(notRatedPairsDF)
+      .filter(col("prediction").isNotNull)
+      .filter(s"prediction > $minimumPositiveRating")
+      .select("userId", "itemId", "prediction")
 
     // print 1000 to console
-    predictedRatingsDF.show(1000)
+    predictedRatingsDS.show(1000)
 
-    // comment table creation when running the second time TODO fix
-    predictedRatingsDF.createCassandraTable(
-      keyspace,
-      cfPredictionsTable,
-      partitionKeyColumns = Some(Seq("userid", "itemid", "prediction"))
-    )
-
-    predictedRatingsDF.write.mode("overwrite").cassandraFormat(cfPredictionsTable, keyspace).save()
+    sink.store(predictedRatingsDS)
   }
 }
 
 object CFJob extends Constants {
+
+  def apply(sparkSession: SparkSession,
+            config: Config,
+            sourceOption: Option[Source],
+            sinkOption: Option[Sink]): CFJob = {
+    val source = sourceOption match {
+      case Some(s) => s
+      case None => new CassandraSource(sparkSession, config)
+    }
+    val sink = sinkOption match {
+      case Some(s) => s
+      case None => new CassandraSink(sparkSession, config)
+    }
+    new CFJob(sparkSession, config, source, sink)
+  }
 
   private def readModel(spark: SparkSession): ALSModel = {
     val model = ALSModel.load(String.format(collaborativeModelPath, mainSubDir))

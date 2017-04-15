@@ -25,7 +25,7 @@ object LocalRunner {
 
     val spark = getSparkSession
 
-    val collaborativeFilteringJob = new CFJob(spark, config)
+    val collaborativeFilteringJob = CFJob(spark, config, None, None)
 
     do {
       collaborativeFilteringJob.run()
