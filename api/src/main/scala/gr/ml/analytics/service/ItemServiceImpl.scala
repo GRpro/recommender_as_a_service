@@ -4,9 +4,9 @@ import com.typesafe.scalalogging.LazyLogging
 import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
 import gr.ml.analytics.domain.Item
 
-class ItemServiceImpl(cassandraConnector: => CassandraConnector) extends ItemService with LazyLogging {
+class ItemServiceImpl(inputDatabase: InputDatabase) extends ItemService with LazyLogging {
 
-  private lazy val itemModel = new InputDatabase(cassandraConnector.connector).itemModel
+  private lazy val itemModel = inputDatabase.itemModel
 
   /**
     * @inheritdoc

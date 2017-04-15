@@ -3,7 +3,7 @@ package gr.ml.analytics.cassandra
 import java.util.UUID
 
 import com.outworkers.phantom.CassandraTable
-import com.outworkers.phantom.dsl.{ConsistencyLevel, DoubleColumn, IntColumn, PartitionKey, RootConnector, Row, _}
+import com.outworkers.phantom.dsl._
 import gr.ml.analytics.domain.Rating
 
 import scala.concurrent.Future

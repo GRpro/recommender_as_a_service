@@ -13,6 +13,9 @@ object Configuration {
   val serviceRecommenderListenerInterface: String = config.getString("service.recommender.listener.iface")
   val serviceRecommenderListenerPort: Int = config.getInt("service.recommender.listener.port")
 
+  val serviceSchemasListenerInterface: String = config.getString("service.schemas.listener.iface")
+  val serviceSchemasListenerPort: Int = config.getInt("service.schemas.listener.port")
+
   val cassandraHosts: List[String] = config.getStringList("cassandra.host").toList
   val cassandraKeyspace: String = config.getString("cassandra.keyspace")
   val cassandraUsername: String = config.getString("cassandra.username")

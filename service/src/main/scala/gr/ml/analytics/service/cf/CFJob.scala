@@ -19,7 +19,7 @@ trait Source {
   /**
     * @return dataframe of (userId: Int, itemId: Int) pairs to predict ratings for
     */
-  def predicted: DataFrame
+  def toRate: DataFrame
 }
 
 
@@ -74,7 +74,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   /**
     * @inheritdoc
     */
-  override def predicted: DataFrame = notRatedPairsDS
+  override def toRate: DataFrame = notRatedPairsDS
 }
 
 
@@ -138,7 +138,7 @@ class CFJob(val sparkSession: SparkSession,
 
     writeModel(sparkSession, model)
 
-    val notRatedPairsDF = source.predicted.select("userId", "itemId")
+    val notRatedPairsDF = source.toRate.select("userId", "itemId")
 
     val predictedRatingsDS = model.transform(notRatedPairsDF)
       .filter(col("prediction").isNotNull)

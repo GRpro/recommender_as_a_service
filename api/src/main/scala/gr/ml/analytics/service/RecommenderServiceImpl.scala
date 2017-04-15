@@ -8,9 +8,9 @@ import gr.ml.analytics.domain.Rating
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class RecommenderServiceImpl(cassandraConnector: => CassandraConnector) extends RecommenderService with Constants with LazyLogging {
+class RecommenderServiceImpl(inputDatabase: InputDatabase) extends RecommenderService with Constants with LazyLogging {
 
-  private lazy val ratingModel = new InputDatabase(cassandraConnector.connector).ratingModel
+  private lazy val ratingModel = inputDatabase.ratingModel
 
   /**
     * @inheritdoc
