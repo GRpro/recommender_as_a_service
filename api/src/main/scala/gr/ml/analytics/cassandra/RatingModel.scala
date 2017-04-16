@@ -15,7 +15,7 @@ class RatingModel extends CassandraTable[ConcreteRatingModel, Rating] {
 
   override def tableName: String = "ratings"
 
-  object id extends UUIDColumn(this) with PartitionKey
+  object id extends UUIDColumn(this) with ClusteringOrder
 
   object userId extends IntColumn(this)
 
@@ -23,13 +23,15 @@ class RatingModel extends CassandraTable[ConcreteRatingModel, Rating] {
 
   object rating extends DoubleColumn(this)
 
-  override def fromRow(r: Row): Rating = Rating(userId(r), itemId(r), rating(r))
+  object timestamp extends LongColumn(this) with PartitionKey
+
+  override def fromRow(r: Row): Rating = Rating(userId(r), itemId(r), rating(r), timestamp(r))
 }
 
 /**
   * Define the available methods for this model
   */
-abstract class ConcreteRatingModel extends RatingModel with RootConnector {
+abstract class ConcreteRatingModel extends RatingModel with RootConnector { // TODO wouldnt it be better to rename to AbstractRatingModel? it's not concrete ;-)
 
   def getAll: Future[List[Rating]] = {
     select
@@ -44,6 +46,7 @@ abstract class ConcreteRatingModel extends RatingModel with RootConnector {
       .value(_.userId, rating.userId)
       .value(_.itemId, rating.itemId)
       .value(_.rating, rating.rating)
+      .value(_.timestamp, rating.timestamp)
       .consistencyLevel_=(ConsistencyLevel.ONE)
       .future()
     id

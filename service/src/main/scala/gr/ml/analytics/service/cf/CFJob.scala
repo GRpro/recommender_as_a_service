@@ -4,6 +4,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.config.Config
 import gr.ml.analytics.cassandra.CassandraUtil
 import gr.ml.analytics.service.Constants
+import gr.ml.analytics.util.DataUtil
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql.functions._
@@ -19,9 +20,14 @@ trait Source {
   /**
     * @return dataframe of (userId: Int, itemId: Int) pairs to predict ratings for
     */
-  def predicted: DataFrame
-}
+  def toRate: DataFrame
 
+  /**
+    * @return Set of userIds the performed latest ratings
+    */
+  def getUserIdsForLast(millis : Long): Set[Int]
+
+}
 
 trait Sink {
   /**
@@ -41,6 +47,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
   private val ratingCol = "rating"
+  private val timestampCol = "timestamp"
 
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
 
@@ -51,7 +58,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
     .format("org.apache.spark.sql.cassandra")
     .options(Map("table" -> ratingsTable, "keyspace" -> keyspace))
     .load()
-    .select(userIdCol, itemIdCol, ratingCol)
+    .select(userIdCol, itemIdCol, ratingCol, timestampCol)
 
   private lazy val userIDsDS = ratingsDS
     .select(col(userIdCol))
@@ -63,7 +70,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
 
   // TODO replace this cross join operation
   private lazy val notRatedPairsDS = itemIDsDS
-    .join(userIDsDS)
+    .join(getUserIdsForLastDF(24 * 3600 * 1000))
     .except(ratingsDS.select(col(userIdCol), col(itemIdCol)))
 
   /**
@@ -74,7 +81,26 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   /**
     * @inheritdoc
     */
-  override def predicted: DataFrame = notRatedPairsDS
+  override def toRate: DataFrame = notRatedPairsDS
+
+  /**
+    * @inheritdoc
+    */
+  override def getUserIdsForLast(millis: Long): Set[Int] = {
+    val userIdsDF = getUserIdsForLastDF(millis)
+
+    val userIdsSet = userIdsDF.collect()
+      .map(r=>r.getInt(0))
+      .toSet
+    userIdsSet
+  }
+
+  def getUserIdsForLastDF(millis: Long): DataFrame = {
+    import spark.implicits._
+    val userIdsDF = ratingsDS.filter($"timestamp" > System.currentTimeMillis() - millis)
+      .select(userIdCol)
+    userIdsDF
+  }
 }
 
 
@@ -138,7 +164,9 @@ class CFJob(val sparkSession: SparkSession,
 
     writeModel(sparkSession, model)
 
-    val notRatedPairsDF = source.predicted.select("userId", "itemId")
+    val notRatedPairsDF = source.toRate.select("userId", "itemId")
+
+    notRatedPairsDF.show()
 
     val predictedRatingsDS = model.transform(notRatedPairsDF)
       .filter(col("prediction").isNotNull)

@@ -16,7 +16,10 @@ class RecommenderAPI(val ratingService: RecommenderService) {
       post {
         entity(as[List[Rating]]) { ratings =>
           ratings.foreach { rating =>
-            ratingService.save(rating.userId, rating.itemId, rating.rating) // TODO For Grisha - this should be an instance of Rating Service, not Recommendation service
+            if (rating.timestamp == null)
+              ratingService.save(rating.userId, rating.itemId, rating.rating, System.currentTimeMillis()) // TODO For Grisha - this should be an instance of Rating Service, not Recommendation service
+            else
+              ratingService.save(rating.userId, rating.itemId, rating.rating, rating.timestamp)
           }
 
           complete(StatusCodes.Created)
