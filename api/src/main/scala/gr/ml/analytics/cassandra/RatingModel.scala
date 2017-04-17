@@ -23,7 +23,9 @@ class RatingModel extends CassandraTable[ConcreteRatingModel, Rating] {
 
   object rating extends DoubleColumn(this)
 
-  override def fromRow(r: Row): Rating = Rating(userId(r), itemId(r), rating(r))
+  object timestamp extends LongColumn(this)
+
+  override def fromRow(r: Row): Rating = Rating(userId(r), itemId(r), rating(r), timestamp(r))
 }
 
 /**
@@ -44,6 +46,7 @@ abstract class ConcreteRatingModel extends RatingModel with RootConnector {
       .value(_.userId, rating.userId)
       .value(_.itemId, rating.itemId)
       .value(_.rating, rating.rating)
+      .value(_.timestamp, rating.timestamp)
       .consistencyLevel_=(ConsistencyLevel.ONE)
       .future()
     id

@@ -11,7 +11,7 @@ trait RecommenderService {
     * Create new ratings for a given user
     * @param userId id of the user who rated items
     */
-  def save(userId: Int, itemId: Int, rating: Double)
+  def save(userId: Int, itemId: Int, rating: Double, timestamp: Long)
 
   /**
     * Get most relevant items for a given user

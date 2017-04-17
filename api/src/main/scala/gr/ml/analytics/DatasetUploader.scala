@@ -55,7 +55,8 @@ object DatasetUploader extends App with Constants with LazyLogging {
         userId <- map.get("userId")
         itemId <- map.get("movieId")
         rating <- map.get("rating")
-      } yield Rating(userId.toInt, itemId.toInt, rating.toDouble)
+        timestamp <- map.get("timestamp")
+      } yield Rating(userId.toInt, itemId.toInt, rating.toDouble, timestamp.toLong)
     }).toList
 
     val responseFutures = ratings.grouped(32).map(ratings => {

@@ -15,8 +15,8 @@ class RecommenderServiceImpl(inputDatabase: InputDatabase) extends RecommenderSe
   /**
     * @inheritdoc
     */
-  override def save(userId: Int, itemId: Int, rating: Double): Unit = {
-    val ratingEntity = Rating(userId, itemId, rating)
+  override def save(userId: Int, itemId: Int, rating: Double, timestamp: Long): Unit = {
+    val ratingEntity = Rating(userId, itemId, rating, timestamp)
     ratingModel.save(ratingEntity)
 
     logger.info(s"saved $ratingEntity")

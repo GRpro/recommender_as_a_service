@@ -2,6 +2,7 @@ package gr.ml.analytics
 
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.cf.CFJob
+import gr.ml.analytics.util.Util
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -21,14 +22,15 @@ object LocalRunner {
 
 
   def main(args: Array[String]): Unit = {
+    Util.windowsWorkAround()
     val config = ConfigFactory.load("application.conf")
 
     val spark = getSparkSession
 
-    val collaborativeFilteringJob = CFJob(spark, config, None, None)
+    val cfJob = CFJob(spark, config, None, None)
 
     do {
-      collaborativeFilteringJob.run()
+      cfJob.run()
 
       Thread.sleep(INTERVAL_MS)
 

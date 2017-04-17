@@ -17,9 +17,14 @@ trait Source {
   def all: DataFrame
 
   /**
-    * @return dataframe of (userId: Int, itemId: Int) pairs to predict ratings for
+    * @return Set of userIds the performed latest ratings
     */
-  def toRate: DataFrame
+  def getUserIdsForLast(seconds : Long): Set[Int]
+
+  /**
+    * @return DataFrame of itemIds and userIds for rating (required by CF job)
+    */
+  def getUserItemsPairsToRate(userId: Int): DataFrame
 }
 
 
@@ -36,35 +41,35 @@ trait Sink {
 class CassandraSource(val sparkSession: SparkSession, val config: Config) extends Source {
 
   private val ratingsTable: String = config.getString("cassandra.ratings_table")
+  private val itemsTable: String = config.getString("cassandra.items_table")
   private val keyspace: String = config.getString("cassandra.keyspace")
 
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
   private val ratingCol = "rating"
-
+  private val timestampCol = "timestamp"
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
 
   spark.conf.set("spark.sql.crossJoin.enabled", "true")
+  import spark.implicits._
 
-  private lazy val ratingsDS = spark
+  private val ratingsDS = spark
     .read
     .format("org.apache.spark.sql.cassandra")
     .options(Map("table" -> ratingsTable, "keyspace" -> keyspace))
     .load()
     .select(userIdCol, itemIdCol, ratingCol)
 
-  private lazy val userIDsDS = ratingsDS
-    .select(col(userIdCol))
-    .distinct()
+  private lazy val userIDsDS = spark
+    .read
+    .format("org.apache.spark.sql.cassandra")
+    .options(Map("table" -> itemsTable, "keyspace" -> keyspace))
+    .load()
+    .select(itemIdCol)
 
   private lazy val itemIDsDS = ratingsDS
     .select(col(itemIdCol))
     .distinct()
-
-  // TODO replace this cross join operation
-  private lazy val notRatedPairsDS = itemIDsDS
-    .join(userIDsDS)
-    .except(ratingsDS.select(col(userIdCol), col(itemIdCol)))
 
   /**
     * @inheritdoc
@@ -74,7 +79,34 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   /**
     * @inheritdoc
     */
-  override def toRate: DataFrame = notRatedPairsDS
+  override def getUserIdsForLast(seconds: Long): Set[Int] = {
+    val userIdsDF = getUserIdsForLastDF(seconds)
+
+    val userIdsSet = userIdsDF.collect()
+      .map(r=>r.getInt(0))
+      .toSet
+    userIdsSet
+  }
+
+  def getUserIdsForLastDF(seconds: Long): DataFrame = {
+    val userIdsDF = ratingsDS.filter($"timestamp" > System.currentTimeMillis()/1000 - seconds)
+      .select(userIdCol).distinct()
+    userIdsDF
+  }
+
+  /**
+    * @inheritdoc
+    */
+  override def getUserItemsPairsToRate(userId: Int): DataFrame ={
+    val itemIdsNotToIncludeDF = ratingsDS.filter($"userid" === userId).select("itemid") // 4 secs
+    val itemIdsNotToIncludeSet = itemIdsNotToIncludeDF.collect()
+      .map(r=>r.getInt(0))
+      .toSet.toList
+    val itemsIdsToRate = itemIDsDS.filter(!$"itemid".isin(itemIdsNotToIncludeSet: _*)) // quick
+    val notRatedPairsDF = itemsIdsToRate.withColumn("userid", lit(userId))
+      .select(col("itemid").as("itemId"), col("userid").as("userId"))
+    notRatedPairsDF
+  }
 }
 
 
@@ -116,7 +148,7 @@ class CFJob(val sparkSession: SparkSession,
             val source: Source,
             val sink: Sink) {
 
-  import CFJob._
+  private val ONE_DAY = 24 * 3600
 
   private val minimumPositiveRating = 3.0
 
@@ -136,19 +168,15 @@ class CFJob(val sparkSession: SparkSession,
 
     val model = als.fit(allRatingsDF)
 
-    writeModel(sparkSession, model)
+    for(userId <- source.getUserIdsForLast(ONE_DAY)){
+     val notRatedPairsDF = source.getUserItemsPairsToRate(userId)
+      val predictedRatingsDS = model.transform(notRatedPairsDF)
+        .filter(col("prediction").isNotNull)
+        .filter(s"prediction > $minimumPositiveRating")
+        .select("userId", "itemId", "prediction")
 
-    val notRatedPairsDF = source.toRate.select("userId", "itemId")
-
-    val predictedRatingsDS = model.transform(notRatedPairsDF)
-      .filter(col("prediction").isNotNull)
-      .filter(s"prediction > $minimumPositiveRating")
-      .select("userId", "itemId", "prediction")
-
-    // print 1000 to console
-    predictedRatingsDS.show(1000)
-
-    sink.store(predictedRatingsDS)
+      sink.store(predictedRatingsDS)
+    }
   }
 }
 
