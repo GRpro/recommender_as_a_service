@@ -2,7 +2,7 @@ package gr.ml.analytics
 
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.cf.CFJob
-import gr.ml.analytics.util.Util
+import gr.ml.analytics.util.{ParamsStorage, Util}
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -26,8 +26,8 @@ object LocalRunner {
     val config = ConfigFactory.load("application.conf")
 
     val spark = getSparkSession
-
-    val cfJob = CFJob(spark, config, None, None)
+    val cfParams = ParamsStorage.getCFParams()
+    val cfJob = CFJob(spark, config, None, None, cfParams)
 
     do {
       cfJob.run()

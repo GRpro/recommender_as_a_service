@@ -89,7 +89,8 @@ lazy val api = project.in(file("api"))
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
     libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
-    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
+    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test",
+    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4"
   )
   .dependsOn(common)
 
@@ -121,7 +122,8 @@ lazy val service = project.in(file("service"))
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
-    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
+    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test",
+    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4"
   )
   .dependsOn(common)
 

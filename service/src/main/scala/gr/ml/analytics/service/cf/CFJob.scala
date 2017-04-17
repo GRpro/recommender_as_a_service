@@ -144,9 +144,9 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
   * Calculates ratings for missing user-item pairs using ALS collaborative filtering algorithm
   */
 class CFJob(val sparkSession: SparkSession,
-            val config: Config,
             val source: Source,
-            val sink: Sink) {
+            val sink: Sink,
+            val params: Map[String, Any]) {
 
   private val ONE_DAY = 24 * 3600
 
@@ -159,9 +159,12 @@ class CFJob(val sparkSession: SparkSession,
 
     val allRatingsDF = source.all.select("userId", "itemId", "rating")
 
+    val rank = params.get("rank").get.toString.toInt
+    val regParam = params.get("reg_param").get.toString.toDouble
     val als = new ALS()
-      .setMaxIter(2) // TODO extract into settable fields
-      .setRegParam(0.1) // TODO extract into settable fields
+      .setMaxIter(2)
+      .setRegParam(regParam)
+      .setRank(rank)
       .setUserCol("userId")
       .setItemCol("itemId")
       .setRatingCol("rating")
@@ -185,7 +188,8 @@ object CFJob extends Constants {
   def apply(sparkSession: SparkSession,
             config: Config,
             sourceOption: Option[Source],
-            sinkOption: Option[Sink]): CFJob = {
+            sinkOption: Option[Sink],
+            params: Map[String, Any]): CFJob = {
     val source = sourceOption match {
       case Some(s) => s
       case None => new CassandraSource(sparkSession, config)
@@ -194,7 +198,7 @@ object CFJob extends Constants {
       case Some(s) => s
       case None => new CassandraSink(sparkSession, config)
     }
-    new CFJob(sparkSession, config, source, sink)
+    new CFJob(sparkSession, source, sink, params)
   }
 
   private def readModel(spark: SparkSession): ALSModel = {
