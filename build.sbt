@@ -48,7 +48,7 @@ lazy val root = project.in(file("."))
         |set of modules related to the project.
       """.stripMargin
   )
-  .aggregate(service, api, common)
+  .aggregate(service, api, common, demo)
 
 
 lazy val common = project.in(file("common"))
@@ -124,6 +124,32 @@ lazy val service = project.in(file("service"))
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
   )
   .dependsOn(common)
+
+
+/*
+This module does not actually belong to project API, it just shows up how
+recommender SaaS can be used with MovieLens dataset https://grouplens.org/datasets/movielens/1m/
+ */
+lazy val demo = project.in(file("movielens_demo"))
+  .settings(commonSettings: _*)
+  .settings(buildInfoSettings: _*)
+  .settings(
+
+    resolvers ++= Seq(
+      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+    ),
+
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
+      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+      "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
+    ),
+    libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
+    libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7"
+  )
 
 // Add any command aliases that may be useful as shortcuts
 addCommandAlias("cct", ";clean;compile;test")

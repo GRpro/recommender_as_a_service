@@ -83,7 +83,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
     val userIdsDF = getUserIdsForLastDF(seconds)
 
     val userIdsSet = userIdsDF.collect()
-      .map(r=>r.getInt(0))
+      .map(r => r.getInt(0))
       .toSet
     userIdsSet
   }

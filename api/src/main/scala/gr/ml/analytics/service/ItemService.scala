@@ -6,22 +6,26 @@ trait ItemService {
 
   /**
     * Get item by id
-    * @param id item id
+    * @param schemaId the id of schema which the item has
+    * @param itemId item id
     * @return item entity
     */
-  def get(id: Int): Item
+  def get(schemaId: Int, itemId: Int): Item
 
   /**
     * Get multiple items by their ids
-    * @param ids list of ids
+    * @param schemaId the id of schema which the item has
+    * @param itemIds list of ids
     * @return list of items
     */
-  def get(ids: List[Int]): List[Item]
+  def get(schemaId: Int, itemIds: List[Int]): List[Item]
 
   /**
     * Stores item
-    * @param id unique item id
-    * @param features map of name/value features for the item
+    * @param schemaId the id of schema which the item has
+    * @param item the item to be stored
+    * @return the id of newly created item
     */
-  def save(id: Int, features: Map[String, String])
+  def save(schemaId: Int, item: Item): Int
 }
+

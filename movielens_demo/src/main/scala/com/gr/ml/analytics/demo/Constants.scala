@@ -1,4 +1,4 @@
-package gr.ml.analytics
+package com.gr.ml.analytics.demo
 
 import java.nio.file.Paths
 

@@ -15,7 +15,7 @@ import scala.concurrent.duration._
   */
 class InputDatabase(override val connector: KeySpaceDef) extends Database[InputDatabase](connector) {
 
-  object itemModel extends ConcreteItemModel with connector.Connector
+//  object itemModel extends ConcreteItemModel with connector.Connector
 
   object ratingModel extends ConcreteRatingModel with connector.Connector
 
@@ -23,11 +23,16 @@ class InputDatabase(override val connector: KeySpaceDef) extends Database[InputD
 
   // create tables if not exist
   private val f1 = schemasModel.create.ifNotExists().future()
-  private val f2 = itemModel.create.ifNotExists().future()
+//  private val f2 = itemModel.create.ifNotExists().future()
   private val f3 = ratingModel.create.ifNotExists().future()
 
 
-  Await.ready(f1, 3.seconds)
-  Await.ready(f2, 3.seconds)
-  Await.ready(f3, 3.seconds)
+  try {
+    Await.ready(f1, 3.seconds)
+    //  Await.ready(f2, 3.seconds)
+    Await.ready(f3, 3.seconds)
+  } catch {
+    case _: Throwable => //ignore
+  }
+
 }

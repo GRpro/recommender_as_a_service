@@ -3,7 +3,7 @@ package gr.ml.analytics.service.contentbased
 import java.io.File
 
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.util.{DataUtil, SparkUtil, Util}
+import gr.ml.analytics.util_old.{DataUtil, SparkUtil, Util}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction

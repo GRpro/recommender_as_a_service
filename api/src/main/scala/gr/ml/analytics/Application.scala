@@ -7,6 +7,7 @@ import akka.stream.ActorMaterializer
 import Configuration._
 import gr.ml.analytics.api.{ItemsAPI, RecommenderAPI, SchemasAPI}
 import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
+import gr.ml.analytics.client.SchemasAPIClient
 import gr.ml.analytics.service._
 
 import scala.io.StdIn
@@ -37,9 +38,12 @@ object Application extends App {
   val inputDatabase = new InputDatabase(cassandraConnector.connector)
 
   // create services
-  val recommenderService: RecommenderService = new RecommenderServiceImpl(inputDatabase)
-  var itemsService: ItemService = new ItemServiceImpl(inputDatabase)
   val schemasService: SchemaService = new SchemaServiceImpl(inputDatabase)
+  val schemasClient: SchemasAPIClient = new SchemasAPIClient(serviceSchemasClientURI)
+
+  val recommenderService: RecommenderService = new RecommenderServiceImpl(inputDatabase)
+  var itemsService: ItemService = new ItemServiceImpl(inputDatabase, schemasClient)
+
 
   // create apis
   val recommenderApi = new RecommenderAPI(recommenderService)

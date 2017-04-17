@@ -1,4 +1,4 @@
-package gr.ml.analytics.util
+package gr.ml.analytics.util_old
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants

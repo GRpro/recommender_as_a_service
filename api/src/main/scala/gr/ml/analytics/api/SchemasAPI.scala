@@ -1,6 +1,7 @@
 package gr.ml.analytics.api
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.{ContentTypes, HttpHeader, StatusCodes}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
 import akka.http.scaladsl.server.Route
 import gr.ml.analytics.service.SchemaService
@@ -13,22 +14,20 @@ import scala.util.{Failure, Success, Try}
 Example schema:
 
 {
-  [
-    "id": {
-      "name": "movieId",
-      "type": "Int"
-    },
-    "features": [
-      {
-        "name": "title",
-        "type": "String"
-      },
-      {
-        "name": "genres",
-        "type": "String"
-      }
-    ]
-  ]
+	"id": {
+		"name": "movieId",
+		"type": "Int"
+	},
+	"features": [
+	  {
+		  "name": "title",
+		  "type": "text"
+	  },
+	  {
+		  "name": "genres",
+		  "type": "text"
+	  }
+	]
 }
 
  */
@@ -47,9 +46,11 @@ class SchemasAPI(schemaService: SchemaService) {
       }
     } ~
       path("schemas" / IntNumber) { schemaId =>
-        get {
-          complete {
-            schemaService.get(schemaId)
+        respondWithHeader(RawHeader("Content-type", "application/json")) {
+          get {
+            complete {
+              schemaService.get(schemaId)
+            }
           }
         }
       }

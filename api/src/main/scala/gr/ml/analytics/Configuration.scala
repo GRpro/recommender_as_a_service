@@ -15,6 +15,7 @@ object Configuration {
 
   val serviceSchemasListenerInterface: String = config.getString("service.schemas.listener.iface")
   val serviceSchemasListenerPort: Int = config.getInt("service.schemas.listener.port")
+  val serviceSchemasClientURI: String = config.getString("service.schemas.rest")
 
   val cassandraHosts: List[String] = config.getStringList("cassandra.host").toList
   val cassandraKeyspace: String = config.getString("cassandra.keyspace")
