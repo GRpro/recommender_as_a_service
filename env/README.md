@@ -1,3 +1,8 @@
+Recommender SaaS local environment
+==================================
+
+Cassandra
+---------
 Cassandra cluster (default 2 nodes) implementation with Docker Compose.
 
 To start cluster use:
@@ -25,4 +30,9 @@ To scale cluster use the following script with desired number of nodes:
 ./scale_cluster.sh 4
 ```
 If no number specified the default "1" node factor will be used. 
-In this case Cassandra cluster with 2 nodes (seed and default node) will be started. 
+In this case Cassandra cluster with 2 nodes (seed and default node) will be started.
+ 
+Redis
+-----
+
+Store job configurations

@@ -22,6 +22,14 @@ services:
 #    networks:
 #      - cassandra_network
 
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      cassandra_network:
+        ipv4_address: 172.25.0.100
+
 networks:
   cassandra_network:
     driver: bridge

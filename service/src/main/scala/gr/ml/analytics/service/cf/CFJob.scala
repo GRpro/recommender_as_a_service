@@ -159,8 +159,8 @@ class CFJob(val sparkSession: SparkSession,
 
     val allRatingsDF = source.all.select("userId", "itemId", "rating")
 
-    val rank = params.get("rank").get.toString.toInt
-    val regParam = params.get("reg_param").get.toString.toDouble
+    val rank = params("rank").toString.toInt
+    val regParam = params("reg_param").toString.toDouble
     val als = new ALS()
       .setMaxIter(2)
       .setRegParam(regParam)
