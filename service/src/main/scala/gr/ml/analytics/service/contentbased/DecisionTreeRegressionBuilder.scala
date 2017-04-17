@@ -1,7 +1,7 @@
 package gr.ml.analytics.service.contentbased
 
 import gr.ml.analytics.service.contentbased.RandomForestEstimatorBuilder.allMoviesSVMPath
-import gr.ml.analytics.util_old.SparkUtil
+import gr.ml.analytics.util.SparkUtil
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.regression.{DecisionTreeRegressor, GeneralizedLinearRegression}

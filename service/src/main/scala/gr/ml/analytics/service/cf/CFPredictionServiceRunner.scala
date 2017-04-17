@@ -4,7 +4,7 @@ import java.io.File
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.util_old.{DataUtil, SparkUtil, Util}
+import gr.ml.analytics.util.{DataUtil, SparkUtil, Util}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction

@@ -5,7 +5,7 @@ import java.io.File
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.cf.CFPredictionService
 import gr.ml.analytics.service.contentbased.{CBPredictionService, GeneralizedLinearRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
-import gr.ml.analytics.util_old.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
+import gr.ml.analytics.util.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
 import org.apache.spark.ml.Pipeline
 import org.slf4j.LoggerFactory
 

@@ -2,7 +2,7 @@ package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
-import gr.ml.analytics.util_old.{DataUtil, Util}
+import gr.ml.analytics.util.{DataUtil, Util}
 import org.apache.spark.ml.Pipeline
 
 object EstimationService extends App with Constants{
