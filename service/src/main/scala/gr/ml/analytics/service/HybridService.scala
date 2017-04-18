@@ -99,6 +99,6 @@ object HybridServiceRunner extends App with Constants{
   //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
   val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
-  val hb = new HybridService(mainSubDir, 1000, 1.0, 1.0)
+  val hb = new HybridService(mainSubDir, 1, 1.0, 1.0)
   hb.run(cbPipeline)
 }
