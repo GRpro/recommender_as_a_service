@@ -43,7 +43,7 @@ object EstimationService extends App with Constants{
   println("Best Accuracy is " + bestAccuracy + " for pipeline: " + bestCBPipeline.getStages +  " and params " + bestParams)
 
   def divideRatingsIntoTrainAndTest(): Unit ={
-    val ratingsReader = CSVReader.open(String.format(ratingsPathSmall, subRootDir)) // TODO replace with all ratings
+    val ratingsReader = CSVReader.open(String.format(ratingsPath, subRootDir)) // TODO replace with all ratings
     val allRatings = ratingsReader.all().filter(l=>l(0)!="userId")
     ratingsReader.close()
     val trainHeaderWriter = CSVWriter.open(String.format(ratingsPath, subRootDir), append = false)

@@ -6,6 +6,7 @@ import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import com.github.tototoshi.csv.CSVReader
+import com.gr.ml.analytics.demo.extractor.GenresFeatureEngineering
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -27,6 +28,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
   Util.loadAndUnzip()
 
+
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
@@ -36,35 +38,38 @@ object DatasetUploader extends App with Constants with LazyLogging {
   val itemsREST = config.getString("service.items.rest")
   val ratingsREST = config.getString("service.ratings.rest")
 
+
+  val featureNames = CSVReader.open(moviesWithFeaturesPath).readNext().get.drop(1)
+  val featureNumbers = featureNames.indices.toList
+  val featuresMap = (featureNumbers zip featureNames).toMap
+
+
   /**
     * Creates schema for item format.
     *
     * @return the id of created schema
     */
   def postSchema(): Int = {
+
+    // the first column is itemId
+    val numFeatures = CSVReader.open(moviesWithFeaturesPath).readNext().get.length - 1
+    val schema = JSONObject(Map(
+      "id" -> JSONObject(Map(
+        "name" -> "movieid",
+        "type" -> "int"
+      )),
+      "features" -> JSONArray((0 until numFeatures).map(n =>
+        JSONObject(Map(
+          "name" -> ("f" + n.toString),
+          "type" -> "double"
+        ))
+      ).toList
+    )))
+
     val future = Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = s"$schemasREST/schemas",
-      // TODO fix this UGLY thing related to marshalling. Send a batch of entities per request.
-      entity = HttpEntity(ContentTypes.`application/json`,
-        """
-          |{
-          |	"id": {
-          |		"name": "movieId",
-          |		"type": "Int"
-          |	},
-          |	"features": [
-          |	  {
-          |		  "name": "title",
-          |		  "type": "text"
-          |	  },
-          |	  {
-          |		  "name": "genres",
-          |		  "type": "text"
-          |	  }
-          |	]
-          |}
-        """.stripMargin)))
+      entity = HttpEntity(ContentTypes.`application/json`, schema.toString())))
 
     future.onFailure { case e => e.printStackTrace() }
     Await.ready(future, 10.seconds)
@@ -76,31 +81,29 @@ object DatasetUploader extends App with Constants with LazyLogging {
     }
   }
 
-  case class Movie(movieId: Int, title: String, genres: String)
+//  case class Movie(movieId: Int, title: String, genres: String)
 
   def uploadMovies(schemaId: Int): Unit = {
 
-    val reader = CSVReader.open(moviesPath)
+    val reader = CSVReader.open(moviesWithFeaturesPath)
 
-    val allItems = reader.toStreamWithHeaders.flatMap(map => {
-      for {
-        movieId <- map.get("movieId")
-        title <- map.get("title")
-        genres <- map.get("genres")
-      } yield Movie(movieId.toInt, title.toString, genres.toString)
+    val allItems = reader.toStreamWithHeaders.map(map => {
+//      val itemMap = Map("itemId" -> map("itemId").toInt)
+      val fMap: Map[String, Any] = featuresMap.map(
+        // TODO the 'f' is appendet
+        entry => ("f" + entry._1.toString, map(entry._2).toDouble)
+      ) + ("movieid" -> map("itemId").toInt)
+      JSONObject(fMap)
     }).toList
 
 
 
 
     // TODO BUG - not all movies are being uploaded, only 9025
-    def postItem(movieList: List[Movie]): Future[HttpResponse] = {
+    def postItem(movieList: List[JSONObject]): Future[HttpResponse] = {
 
-      def toJson(movieList: List[Movie]): String = {
-        JSONArray(movieList.map(movie => JSONObject(Map(
-          "movieId" -> movie.movieId,
-          "title" -> movie.title,
-          "genres" -> movie.genres)))).toString()
+      def toJson(movieList: List[JSONObject]): String = {
+        JSONArray(movieList).toString()
       }
 
       val future = Http().singleRequest(HttpRequest(
@@ -113,7 +116,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
     }
 
     // every request will contain 1000 movies
-    val groupedMovies: List[List[Movie]] = allItems.grouped(1000).toList
+    val groupedMovies: List[List[JSONObject]] = allItems.grouped(1000).toList
 
     groupedMovies.foreach(movies => {
       val future = postItem(movies)

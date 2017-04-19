@@ -26,7 +26,7 @@ object LinearRegressionWithElasticNetBuilder {
 
   // TODO path is NOT actually used...
   def build(path: String): Pipeline = {
-    val spark = SparkUtil.sparkSession()
+//    val spark = SparkUtil.sparkSession()
 
     val lr = new LinearRegression()
       .setMaxIter(10)
@@ -36,7 +36,7 @@ object LinearRegressionWithElasticNetBuilder {
     val pipeline = new Pipeline()
       .setStages(Array(lr))
 
-    spark.stop()
+//    spark.stop()
 
     pipeline
   }

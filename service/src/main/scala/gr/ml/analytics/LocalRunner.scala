@@ -2,6 +2,7 @@ package gr.ml.analytics
 
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.cf.CFJob
+import gr.ml.analytics.service.contentbased.CBFJob
 import gr.ml.analytics.util.{ParamsStorage, Util}
 import org.apache.spark.sql.SparkSession
 
@@ -26,11 +27,15 @@ object LocalRunner {
     val config = ConfigFactory.load("application.conf")
 
     val spark = getSparkSession
-    val cfParams = ParamsStorage.getCFParams()
-    val cfJob = CFJob(spark, config, None, None, cfParams)
 
+//    val cfParams = ParamsStorage.getCFParams()
+    val cbfParams = ParamsStorage.getCFParams()
+
+//    val cfJob = CFJob(spark, config, None, None, cfParams)
+    val cbfJob = CBFJob(spark, config, None, None, cbfParams)
     do {
-      cfJob.run()
+//      cfJob.run()
+      cbfJob.run()
 
       Thread.sleep(INTERVAL_MS)
 

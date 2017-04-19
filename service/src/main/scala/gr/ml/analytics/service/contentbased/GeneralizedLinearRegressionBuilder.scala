@@ -26,7 +26,7 @@ object GeneralizedLinearRegressionBuilder {
 
   // TODO path is NOT actually used...
   def build(path: String): Pipeline = {
-    val spark = SparkUtil.sparkSession()
+//    val spark = SparkUtil.sparkSession()
 
     val glr = new GeneralizedLinearRegression()
       .setFamily("gaussian")
@@ -37,7 +37,7 @@ object GeneralizedLinearRegressionBuilder {
     val pipeline = new Pipeline()
       .setStages(Array(glr))
 
-    spark.stop()
+//    spark.stop()
 
     pipeline
   }
