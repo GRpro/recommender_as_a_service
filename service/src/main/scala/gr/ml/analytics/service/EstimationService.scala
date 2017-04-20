@@ -1,8 +1,11 @@
 package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
+import com.typesafe.config.ConfigFactory
+import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
+import gr.ml.analytics.service.cf.{CassandraSink, CassandraSource}
 import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
-import gr.ml.analytics.util.{DataUtil, Util}
+import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
 
 object EstimationService extends App with Constants{
@@ -14,7 +17,13 @@ object EstimationService extends App with Constants{
   Util.loadAndUnzip(subRootDir)
   divideRatingsIntoTrainAndTest()
   val numberOfTrainRatings = getNumberOfTrainRatings()
-  val hb = new HybridService(subRootDir, numberOfTrainRatings, 1.0, 1.0)
+
+  val sparkSession = SparkUtil.sparkSession()
+  val config = ConfigFactory.load("application.conf")
+  val source = new CassandraSource(sparkSession, config)
+  val sink = new CassandraSink(sparkSession, config)
+  val paramsStorage: ParamsStorage = new RedisParamsStorage
+  val hb = new HybridService(mainSubDir, sparkSession, config, source, sink, paramsStorage)
   hb.prepareNecessaryFiles()
 
   var bestAccuracy = 0.0
@@ -26,19 +35,20 @@ object EstimationService extends App with Constants{
     RandomForestEstimatorBuilder.build(subRootDir),
     DecisionTreeRegressionBuilder.build(subRootDir))
 
-  pipelines.foreach(pipeline => {
-    hb.runOneCycle(pipeline)
-    (0.0 to 1.0 by 0.01).foreach(i=>{
-      hb.combinePredictionsForLastUsers(i, 1-i)
-      val accuracy = estimateAccuracy(upperFraction, lowerFraction)
-      println("LinearRegressionWithElasticNetBuilder:: Weights: " + i + ", " + (1-i) + " => Accuracy: " + accuracy)
-      if(accuracy > bestAccuracy){
-        bestAccuracy = accuracy
-        bestParams = (i, 1-i)
-        bestCBPipeline = pipeline
-      }
-    })
-  })
+  // TODO deal with it!
+//  pipelines.foreach(pipeline => {
+//    hb.runOneCycle(pipeline)
+//    (0.0 to 1.0 by 0.01).foreach(i=>{
+//      hb.combinePredictionsForLastUsers(i, 1-i)
+//      val accuracy = estimateAccuracy(upperFraction, lowerFraction)
+//      println("LinearRegressionWithElasticNetBuilder:: Weights: " + i + ", " + (1-i) + " => Accuracy: " + accuracy)
+//      if(accuracy > bestAccuracy){
+//        bestAccuracy = accuracy
+//        bestParams = (i, 1-i)
+//        bestCBPipeline = pipeline
+//      }
+//    })
+//  })
 
   println("Best Accuracy is " + bestAccuracy + " for pipeline: " + bestCBPipeline.getStages +  " and params " + bestParams)
 

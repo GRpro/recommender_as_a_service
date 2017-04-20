@@ -16,7 +16,7 @@ class CFPredictionService(val subRootDir: String) extends Constants {
   val dataUtil = new DataUtil(subRootDir)
 
   def persistPopularItemIDS(): Unit ={
-    println("persistPopularItemIDS") // TODO move to Data Util
+    println("persistPopularItemIDS")
     val ratingsReader = CSVReader.open(String.format(ratingsPath,subRootDir))
     val allRatings = ratingsReader.all()
     ratingsReader.close()
@@ -144,6 +144,10 @@ object CFPredictionServiceRunner extends App with Constants {
   Util.windowsWorkAround()
   val cfPredictionService = new CFPredictionService(mainSubDir)
   val dataUtil = new DataUtil(mainSubDir)
+
+  // TODO remove!!!
+  cfPredictionService.updatePredictionsForUser(777)
+
   /*
     Periodically run batch job which updates model
   */

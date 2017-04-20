@@ -3,26 +3,40 @@ package gr.ml.analytics.service
 import java.io.File
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
-import gr.ml.analytics.service.cf.CFPredictionService
-import gr.ml.analytics.service.contentbased.{CBPredictionService, GeneralizedLinearRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
-import gr.ml.analytics.util.{CSVtoSVMConverter, DataUtil, GenresFeatureEngineering, Util}
+import com.typesafe.config.{Config, ConfigFactory}
+import gr.ml.analytics.service.cf.{CFJob, CFPredictionService, CassandraSink, CassandraSource, Sink, Source}
+import gr.ml.analytics.service.contentbased.{CBPredictionService, RandomForestEstimatorBuilder}
+import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
+import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
-class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: Double, contentBasedWeight: Double) extends Constants{
+class HybridService(subRootDir: String, sparkSession: SparkSession, config: Config, source: Source, sink: Sink, paramsStorage: ParamsStorage) extends Constants{
 
-  val dataUtil = new DataUtil(subRootDir)
   val cfPredictionService = new CFPredictionService(subRootDir)
   val cbPredictionService = new CBPredictionService(subRootDir)
   val csv2svmConverter = new CSVtoSVMConverter(subRootDir)
 
   def run(cbPipeline: Pipeline): Unit ={
-    prepareNecessaryFiles()
+    prepareNecessaryFiles() // TODO remove it when we have cassandra implementation of CB
+    sink.persistPopularItemIDS()
 
     while(true){
       Thread.sleep(5000) // can be increased for production
-      runOneCycle(cbPipeline)
-      combinePredictionsForLastUsers(collaborativeWeight, contentBasedWeight)
+
+      CFJob(sparkSession, config, None, None, paramsStorage.getParams()).run() // TODO add logging somehow
+
+      // CBJob:
+      val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+      val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
+      for(userId <- userIds){
+        Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
+        Util.tryAndLog(cbPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Content-based:: Updating predictions for User " + userId)
+        LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: ##################### END OF ITERATION ##########################")
+      }
+
+      val collaborativeWeight = paramsStorage.getParams().get("hb_collaborative_weight").get.toString.toLong
+      combinePredictionsForLastUsers(collaborativeWeight)
     }
 
   }
@@ -31,40 +45,42 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     val startTime = System.currentTimeMillis()
     if(!(new File(String.format(moviesWithFeaturesPath, subRootDir)).exists()))
       new GenresFeatureEngineering(subRootDir).createAllMoviesWithFeaturesFile()
-    val userIds = dataUtil.getUserIdsFromLastNRatings(lastNRatings)
+    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
     userIds.foreach(csv2svmConverter.createSVMRatingsFileForUser)
     if(!(new File(allMoviesSVMPath).exists()))
       csv2svmConverter.createSVMFileForAllItems()
-    cfPredictionService.persistPopularItemIDS()
     val finishTime = System.currentTimeMillis()
 
     LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: Startup time took: " + (finishTime - startTime) + " millis.")
   }
 
-  def runOneCycle(cbPipeline: Pipeline): Unit ={
-    Util.tryAndLog(cfPredictionService.updateModel(), subRootDir + " :: Collaborative:: Updating model")
-    val userIds = dataUtil.getUserIdsFromLastNRatings(lastNRatings)
-    for(userId <- userIds){
-      Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
-      Util.tryAndLog(cfPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Collaborative:: Updating predictions for User " + userId)
-      Util.tryAndLog(cbPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Content-based:: Updating predictions for User " + userId)
-      LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: ##################### END OF ITERATION ##########################")
-    }
-  }
+//  def runOneCycle(cbPipeline: Pipeline): Unit ={
+//    Util.tryAndLog(cfPredictionService.updateModel(), subRootDir + " :: Collaborative:: Updating model")
+//    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+//    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
+//    for(userId <- userIds){
+//      Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
+//      Util.tryAndLog(cfPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Collaborative:: Updating predictions for User " + userId)
+//      Util.tryAndLog(cbPredictionService.updatePredictionsForUser(userId), subRootDir + " :: Content-based:: Updating predictions for User " + userId)
+//      LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: ##################### END OF ITERATION ##########################")
+//    }
+//  }
 
   def multiplyByWeight(predictions: List[List[String]], weight: Double): List[List[String]] ={
     predictions.map(l=>List(l(0), l(1), (l(2).toDouble * weight).toString))
   }
 
-  def combinePredictionsForLastUsers(collaborativeWeight: Double, contentBasedWeight: Double): Unit ={
-    val userIds = dataUtil.getUserIdsFromLastNRatings(lastNRatings)
+  def combinePredictionsForLastUsers(collaborativeWeight: Double): Unit ={
+    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
     for(userId <- userIds){
 //      Util.tryAndLog(combinePredictionsForUser(userId, collaborativeWeight, contentBasedWeight), subRootDir + " :: Hybrid:: Combining CF and CB predictions for user " + userId)
-      combinePredictionsForUser(userId, collaborativeWeight, contentBasedWeight)
+      combinePredictionsForUser(userId, collaborativeWeight)
     }
   }
 
-  def combinePredictionsForUser(userId: Int, collaborativeWeight: Double, contentBasedWeight: Double): Unit ={
+  def combinePredictionsForUser(userId: Int, collaborativeWeight: Double): Unit ={
     new File(String.format(finalPredictionsDirectoryPath, subRootDir)).mkdirs()
     val collaborativeReader = CSVReader.open(String.format(collaborativePredictionsForUserPath, subRootDir, userId.toString))
     val collaborativePredictions = collaborativeReader.all().filter(l=>l(0)!="userId")
@@ -74,7 +90,7 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     contentBasedReader.close()
 
     val weightedCollaborativePredictions = multiplyByWeight(collaborativePredictions, collaborativeWeight)
-    val weightedContentBasedPredictions = multiplyByWeight(contentBasedPredictions, contentBasedWeight)
+    val weightedContentBasedPredictions = multiplyByWeight(contentBasedPredictions, 1-collaborativeWeight)
 
     val allPredictions= weightedCollaborativePredictions ++ weightedContentBasedPredictions
 
@@ -90,15 +106,21 @@ class HybridService(subRootDir: String, lastNRatings: Int, collaborativeWeight: 
     finalPredictionsWriter.close()
 
     val finalPredictedIDs = hybridPredictions.map(l=>l(1).toInt)
-    cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs)
+//    cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs) // TODO USE CASSANDRA!!!
   }
 }
 
 object HybridServiceRunner extends App with Constants{
+  Util.windowsWorkAround()
   Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
   //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
   val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
-  val hb = new HybridService(mainSubDir, 1, 1.0, 1.0)
+  val sparkSession = SparkUtil.sparkSession()
+  val config = ConfigFactory.load("application.conf")
+  val source = new CassandraSource(sparkSession, config)
+  val sink = new CassandraSink(sparkSession, config)
+  val paramsStorage: ParamsStorage = new RedisParamsStorage
+  val hb = new HybridService(mainSubDir, sparkSession, config, source, sink, paramsStorage)
   hb.run(cbPipeline)
 }

@@ -28,7 +28,7 @@ object LocalRunner {
     val config = ConfigFactory.load("application.conf")
     val paramsStorage: ParamsStorage = new RedisParamsStorage
     val spark = getSparkSession
-    val cfParams = paramsStorage.getCFParams()
+    val cfParams = paramsStorage.getParams()
     val cfJob = CFJob(spark, config, None, None, cfParams)
 
 //    val cfParams = ParamsStorage.getCFParams()
