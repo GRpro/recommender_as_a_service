@@ -7,13 +7,14 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 
 class CBFJob(val sparkSession: SparkSession,
+             val config: Config,
              val source: Source,
              val sink: Sink,
              val params: Map[String, Any],
              pipeline: => Pipeline) {
 
-  private val ONE_DAY = 24 * 3600
-  private val MINIMAL_POSITIVE_RATING = 3
+  private val ONE_DAY = 24 * 3600 // TODO read from params
+  private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
 
   import sparkSession.implicits._
 
@@ -37,8 +38,6 @@ class CBFJob(val sparkSession: SparkSession,
         .select($"d1.rating".as("label"),
           $"d2.features".as("features"))
 
-      trainingDF.show()
-
       val model = pipeline.fit(trainingDF)
 
       val notRatedDF = source.getUserItemPairsToRate(userId)
@@ -46,16 +45,11 @@ class CBFJob(val sparkSession: SparkSession,
         .select($"d1.itemId".as("itemId"), $"d1.userId".as("userId"),
           $"d2.features".as("features"))
 
-      notRatedDF.show() // TODO remove
-
       val predictedRatingsDS = model.transform(notRatedDF)
         .filter(col("prediction").isNotNull)
-        .filter(s"prediction > $MINIMAL_POSITIVE_RATING") // TODO probably remove this
         .select("userId", "itemId", "prediction")
 
-      predictedRatingsDS.show() // TODO remove
-
-      sink.storeCBPredictions(predictedRatingsDS)
+      sink.storePredictions(predictedRatingsDS, cbPredictionsTable)
     }
   }
 }
@@ -81,7 +75,7 @@ object CBFJob {
 
     lazy val pipeline = LinearRegressionWithElasticNetBuilder.build("")
 
-    new CBFJob(sparkSession, source, sink, params, pipeline)
+    new CBFJob(sparkSession, config, source, sink, params, pipeline)
   }
 
 

@@ -16,8 +16,8 @@ class CFJob(val sparkSession: SparkSession,
             val params: Map[String, Any]) {
 
   private val ONE_DAY = 24 * 3600   // TODO Set it from redis
+  private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
 
-  private val minimumPositiveRating = 3.0
 
   /**
     * Spark job entry point
@@ -42,11 +42,10 @@ class CFJob(val sparkSession: SparkSession,
      val notRatedPairsDF = source.getUserItemPairsToRate(userId)
       val predictedRatingsDS = model.transform(notRatedPairsDF)
         .filter(col("prediction").isNotNull)
-        .filter(s"prediction > $minimumPositiveRating")
         .select("userid", "itemid", "prediction")
         .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
 
-      sink.storeCFPredictions(predictedRatingsDS)
+      sink.storePredictions(predictedRatingsDS, cfPredictionsTable)
     }
   }
 }

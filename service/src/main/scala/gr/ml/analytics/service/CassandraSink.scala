@@ -17,6 +17,8 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
   private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
   private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
   private val popularItemsTable: String = config.getString("cassandra.popular_items_table")
+  private val hybridPredictionsTable: String = config.getString("cassandra.hybrid_predictions_table")
+  private val recommendationsTable: String = config.getString("cassandra.recommendations_table")
 
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
@@ -27,9 +29,11 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$cfPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$cbPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$popularItemsTable (itemid int PRIMARY KEY, rating float, n_ratings int)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$hybridPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$recommendationsTable (userid int PRIMARY KEY, recommended_ids text)")
   }
 
-  def storePredictions(predictions: DataFrame, predictionsTable: String): Unit = {
+  override def storePredictions(predictions: DataFrame, predictionsTable: String): Unit = {
     predictions
       .select(col("userId").as("userid"), col("itemId").as("itemid"), col("prediction"))
       .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
@@ -38,18 +42,13 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
       .save()
   }
 
-  /**
-    * @inheritdoc
-    */
-  override def storeCBPredictions(predictions: DataFrame): Unit = {
-    storePredictions(predictions, cbPredictionsTable)
-  }
+  override def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int]): Unit ={
+    List((userId, recommendedItemIds.toArray.mkString(":")))
+      .toDF("userid", "recommended_ids")
+      .write.mode("append")
+      .cassandraFormat(recommendationsTable, keyspace)
+      .save()
 
-  /**
-    * @inheritdoc
-    */
-  override def storeCFPredictions(predictions: DataFrame): Unit = {
-    storePredictions(predictions, cfPredictionsTable)
   }
 
   /**

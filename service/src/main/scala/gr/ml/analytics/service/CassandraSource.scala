@@ -17,10 +17,12 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   private val itemsTable: String = config.getString("cassandra.items_table_prefix") + schemaId
   private val schemasTable: String = config.getString("cassandra.schemas_table")
 
+  private val keyCol = "key"
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
   private val ratingCol = "rating"
   private val timestampCol = "timestamp"
+  private val predictionCol = "prediction"
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
 
 //  spark.conf.set("spark.sql.crossJoin.enabled", "true")
@@ -44,6 +46,15 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   private lazy val itemIDsDS = ratingsDS
     .select(col(itemIdCol))
     .distinct()
+
+  override def getPredictionsForUser(userId: Int, table: String): DataFrame = {
+    spark.read
+    .format("org.apache.spark.sql.cassandra")
+    .options(Map("table" -> table, "keyspace" -> keyspace))
+    .load()
+    .select(keyCol, userIdCol, itemIdCol, predictionCol)
+    .where(col(userIdCol) === userId)
+  }
 
   private lazy val schema: Map[String, Any] = CassandraConnector(sparkSession.sparkContext).withSessionDo[Map[String, Any]] { session =>
 

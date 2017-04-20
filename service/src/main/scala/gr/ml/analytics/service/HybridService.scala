@@ -13,12 +13,16 @@ import org.slf4j.LoggerFactory
 
 class HybridService(subRootDir: String, sparkSession: SparkSession, config: Config, source: Source, sink: Sink, paramsStorage: ParamsStorage) extends Constants{
 
+  import sparkSession.implicits._
   val cfPredictionService = new CFPredictionService(subRootDir)
   val cbPredictionService = new CBPredictionService(subRootDir)
   val csv2svmConverter = new CSVtoSVMConverter(subRootDir)
 
+  private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
+  private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
+  private val hybridPredictionsTable: String = config.getString("cassandra.hybrid_predictions_table")
+
   def run(cbPipeline: Pipeline): Unit ={
-    prepareNecessaryFiles() // TODO remove it when we have cassandra implementation of CB
     sink.persistPopularItems()
 
     while(true){
@@ -73,40 +77,31 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
 
   def combinePredictionsForLastUsers(collaborativeWeight: Double): Unit ={
     val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
-    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
+    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds) // TODO not good, that we have to get it every time...
     for(userId <- userIds){
-//      Util.tryAndLog(combinePredictionsForUser(userId, collaborativeWeight, contentBasedWeight), subRootDir + " :: Hybrid:: Combining CF and CB predictions for user " + userId)
       combinePredictionsForUser(userId, collaborativeWeight)
     }
   }
 
   def combinePredictionsForUser(userId: Int, collaborativeWeight: Double): Unit ={
-    new File(String.format(finalPredictionsDirectoryPath, subRootDir)).mkdirs()
-    val collaborativeReader = CSVReader.open(String.format(collaborativePredictionsForUserPath, subRootDir, userId.toString))
-    val collaborativePredictions = collaborativeReader.all().filter(l=>l(0)!="userId")
-    collaborativeReader.close()
-    val contentBasedReader = CSVReader.open(String.format(contentBasedPredictionsForUserPath, subRootDir, userId.toString))
-    val contentBasedPredictions = contentBasedReader.all().filter(l=>l(0)!="userId")
-    contentBasedReader.close()
+    val cfPredictionsDF = source.getPredictionsForUser(userId, cfPredictionsTable).withColumn("prediction", $"prediction" * collaborativeWeight)
+    val cbPredictionsDF = source.getPredictionsForUser(userId, cbPredictionsTable).withColumn("prediction", $"prediction" * (1-collaborativeWeight))
 
-    val weightedCollaborativePredictions = multiplyByWeight(collaborativePredictions, collaborativeWeight)
-    val weightedContentBasedPredictions = multiplyByWeight(contentBasedPredictions, 1-collaborativeWeight)
+    val hybridPredictions = cfPredictionsDF // TODO should we use spark here?
+      .select("key","userid", "itemid", "prediction")
+      .as("d1").join(cbPredictionsDF.as("d2"), $"d1.key" === $"d2.key")
+      .withColumn("hybrid_prediction", $"d1.prediction" + $"d2.prediction")
+      .select($"d1.key", $"d2.userid", $"d2.itemid", $"hybrid_prediction".as("prediction"))
+      .sort($"prediction".desc)
+      .limit(100) // TODO extract to config
 
-    val allPredictions= weightedCollaborativePredictions ++ weightedContentBasedPredictions
+    // TODO we probably don't need to save it, since final predictions is enough.. check if we benefit in time if not persisting it
+    sink.storePredictions(hybridPredictions, hybridPredictionsTable) // TODO should we use spark here?
 
-    val hybridPredictions: List[List[String]]= allPredictions.groupBy(l=>l(1))
-      .map(t=>(t._1, t._2.reduce((l1,l2)=>List(l1(0), l1(1), (l1(2).toDouble+l2(2).toDouble).toString))))
-      .map(t=>t._2).toList.sortWith((l,r) => l(2).toDouble > r(2).toDouble)
-
-    val finalPredictionsHeaderWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, subRootDir, userId.toString), append = false)
-    finalPredictionsHeaderWriter.writeRow(List("userId", "itemId", "rating"))
-    finalPredictionsHeaderWriter.close()
-    val finalPredictionsWriter = CSVWriter.open(String.format(finalPredictionsForUserPath, subRootDir, userId.toString), append = true)
-    finalPredictionsWriter.writeAll(hybridPredictions)
-    finalPredictionsWriter.close()
-
-    val finalPredictedIDs = hybridPredictions.map(l=>l(1).toInt)
-//    cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs) // TODO USE CASSANDRA!!!
+    val finalPredictedIDs = hybridPredictions.select("itemid").collect().map(r => r.getInt(0)).toList
+//    val finalPredictedIDs = hybridPredictions.map(l=>l(1).toInt)
+//    cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs)
+    sink.storeRecommendedItemIDs(userId, finalPredictedIDs)
   }
 }
 

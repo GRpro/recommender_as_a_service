@@ -22,4 +22,6 @@ trait Source {
     * @return DataFrame of itemIds and numeric features
     */
   def getAllItemsAndFeatures(): DataFrame
+
+  def getPredictionsForUser(userId: Int, table: String): DataFrame
 }
