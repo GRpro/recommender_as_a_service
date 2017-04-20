@@ -66,10 +66,10 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
     userIdsDF
   }
 
-  override def getAllRatings: DataFrame = ratingsDS
+  override def all: DataFrame = ratingsDS
 
 
-  override def getUserIdsForLast(seconds: Long): Set[Int] = {
+  override def getUserIdsForLastNSeconds(seconds: Long): Set[Int] = {
     val userIdsDF = getUserIdsForLastDF(seconds)
 
     val userIdsSet = userIdsDF.collect()
@@ -108,8 +108,6 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
       .load()
       .select(idColumnName, featureColumnNames:_*)
 
-    itemsRowDF.printSchema()
-
     val itemsDF = itemsRowDF.map(row => {
       val id = row.getInt(0)
       val featureValues = (1 until row.length).map(idx => row.getDouble(idx))
@@ -117,7 +115,6 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
       (id, Vectors.dense(featureValuesArr))
     }).toDF("itemid", "features")
 
-    itemsDF.show()
     itemsDF
 
     // the format of libsvm

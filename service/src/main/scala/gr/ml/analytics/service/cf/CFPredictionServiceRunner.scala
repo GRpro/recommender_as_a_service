@@ -15,8 +15,8 @@ class CFPredictionService(val subRootDir: String) extends Constants {
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
   val dataUtil = new DataUtil(subRootDir)
 
-  def persistPopularItemIDS(): Unit ={
-    println("persistPopularItemIDS")
+  def persistPopularItems(): Unit ={
+    println("persistPopularItems")
     val ratingsReader = CSVReader.open(String.format(ratingsPath,subRootDir))
     val allRatings = ratingsReader.all()
     ratingsReader.close()

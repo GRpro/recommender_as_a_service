@@ -6,12 +6,12 @@ trait Source {
   /**
     * @return DataFrame of (userId: Int, itemId: Int, rating: float) triples to train model
     */
-  def getAllRatings: DataFrame
+  def all: DataFrame
 
   /**
     * @return Set of userIds the performed latest ratings
     */
-  def getUserIdsForLast(seconds : Long): Set[Int]
+  def getUserIdsForLastNSeconds(seconds : Long): Set[Int]
 
   /**
     * @return DataFrame of itemIds and userIds for rating (required by CF job)

@@ -20,9 +20,8 @@ class CBFJob(val sparkSession: SparkSession,
   def run(): Unit = {
 
     val itemAndFeaturesDF = source.getAllItemsAndFeatures()
-    source.getUserIdsForLast(ONE_DAY)
 
-    for (userId <- source.getUserIdsForLast(ONE_DAY)) {
+    for (userId <- source.getUserIdsForLastNSeconds(ONE_DAY)) {
       // each user requires a separate model
       // CBF steps:
       // 1. select DataFrame of (label, features) for a given user
@@ -31,7 +30,7 @@ class CBFJob(val sparkSession: SparkSession,
       // 4. perform predictions using created model
 
       // TODO Slow. Improve performance
-      val trainingDF = source.getAllRatings
+      val trainingDF = source.all
         .filter($"userid" === userId)
         .select("itemid", "rating")
         .as("d1").join(itemAndFeaturesDF.as("d2"), $"d1.itemid" === $"d2.itemid")
@@ -47,16 +46,16 @@ class CBFJob(val sparkSession: SparkSession,
         .select($"d1.itemId".as("itemId"), $"d1.userId".as("userId"),
           $"d2.features".as("features"))
 
-      notRatedDF.show()
+      notRatedDF.show() // TODO remove
 
       val predictedRatingsDS = model.transform(notRatedDF)
         .filter(col("prediction").isNotNull)
-        .filter(s"prediction > $MINIMAL_POSITIVE_RATING")
+        .filter(s"prediction > $MINIMAL_POSITIVE_RATING") // TODO probably remove this
         .select("userId", "itemId", "prediction")
 
-      predictedRatingsDS.show()
+      predictedRatingsDS.show() // TODO remove
 
-      sink.store(predictedRatingsDS)
+      sink.storeCBPredictions(predictedRatingsDS)
     }
   }
 }
@@ -77,7 +76,7 @@ object CBFJob {
     }
     val sink = sinkOption match {
       case Some(s) => s
-      case None => new CassandraSink(sparkSession, config, "cbf_predictions")
+      case None => new CassandraSink(sparkSession, config)
     }
 
     lazy val pipeline = LinearRegressionWithElasticNetBuilder.build("")

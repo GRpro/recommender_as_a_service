@@ -2,8 +2,6 @@ package gr.ml.analytics.service
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.ConfigFactory
-import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
-import gr.ml.analytics.service.cf.{CassandraSink, CassandraSource}
 import gr.ml.analytics.service.contentbased.{DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline

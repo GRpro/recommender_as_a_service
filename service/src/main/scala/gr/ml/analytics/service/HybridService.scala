@@ -4,7 +4,7 @@ import java.io.File
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.{Config, ConfigFactory}
-import gr.ml.analytics.service.cf.{CFJob, CFPredictionService, CassandraSink, CassandraSource, Sink, Source}
+import gr.ml.analytics.service.cf.{CFJob, CFPredictionService}
 import gr.ml.analytics.service.contentbased.{CBPredictionService, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
@@ -19,7 +19,7 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
 
   def run(cbPipeline: Pipeline): Unit ={
     prepareNecessaryFiles() // TODO remove it when we have cassandra implementation of CB
-    sink.persistPopularItemIDS()
+    sink.persistPopularItems()
 
     while(true){
       Thread.sleep(5000) // can be increased for production

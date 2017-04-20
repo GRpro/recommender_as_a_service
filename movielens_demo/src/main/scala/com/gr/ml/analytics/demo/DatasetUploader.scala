@@ -26,7 +26,7 @@ import scala.util.{Failure, Success}
   */
 object DatasetUploader extends App with Constants with LazyLogging {
 
-  Util.loadAndUnzip()
+  Util.loadAndUnzip()     // TODO it should perform feature generation too!
 
 
   implicit val system = ActorSystem()
@@ -125,7 +125,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
     })
   }
 
-  case class Rating(userId: Int, itemId: Int, rating: Double)
+  case class Rating(userId: Int, itemId: Int, rating: Double, timestamp: Long)
 
   def uploadRatings(): Unit = {
 
@@ -137,7 +137,8 @@ object DatasetUploader extends App with Constants with LazyLogging {
         JSONArray(ratingList.map(rating => JSONObject(Map(
           "userId" -> rating.userId,
           "itemId" -> rating.itemId,
-          "rating" -> rating.rating)))).toString()
+          "rating" -> rating.rating,
+          "timestamp" -> rating.timestamp)))).toString()
       }
 
       val future = Http().singleRequest(HttpRequest(
@@ -154,7 +155,8 @@ object DatasetUploader extends App with Constants with LazyLogging {
         userId <- map.get("userId")
         itemId <- map.get("movieId")
         rating <- map.get("rating")
-      } yield Rating(userId.toInt, itemId.toInt, rating.toDouble)
+        timestamp <- map.get("timestamp")
+      } yield Rating(userId.toInt, itemId.toInt, rating.toDouble, timestamp.toLong)
     }).toList
 
     // every request will contain 1000 ratings
