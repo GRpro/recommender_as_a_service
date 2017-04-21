@@ -87,6 +87,8 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
       .map(r => r.getInt(0))
       .toSet
     userIdsSet
+
+    ratingsDS.select(userIdCol).take(5).map(r => r.getInt(0)).toSet
   }
 
 

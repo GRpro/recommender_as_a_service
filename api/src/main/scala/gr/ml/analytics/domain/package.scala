@@ -12,4 +12,8 @@ package object domain {
 
   object Schema
 
+  case class Recommendation(userId: Int, topItems: List[Int])
+
+  object Recommendation
+
 }

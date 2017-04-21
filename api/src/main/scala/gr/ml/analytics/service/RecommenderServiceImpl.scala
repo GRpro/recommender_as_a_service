@@ -3,10 +3,14 @@ package gr.ml.analytics.service
 import com.typesafe.scalalogging.LazyLogging
 import gr.ml.analytics.cassandra.InputDatabase
 import gr.ml.analytics.domain.Rating
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import scala.concurrent.Future
 
 class RecommenderServiceImpl(inputDatabase: InputDatabase) extends RecommenderService with LazyLogging {
 
   private lazy val ratingModel = inputDatabase.ratingModel
+  private lazy val recommendationModel = inputDatabase.recommendationsModel
 
   /**
     * @inheritdoc
@@ -22,22 +26,10 @@ class RecommenderServiceImpl(inputDatabase: InputDatabase) extends RecommenderSe
   /**
     * @inheritdoc
     */
-  // TODO implement when migrate to cassandra
-  override def getTop(userId: Int, n: Int): List[Int] = {
-//    val predictionsReader = CSVReader.open(predictionsPath)
-//    val allPredictions = predictionsReader.all()
-//    predictionsReader.close()
-//    val filtered = allPredictions.filter((pr: List[String]) => pr.head.toInt == userId)
-//    if (filtered.size > 0) {
-//      val predictedItemIdsFromFile = filtered.last(1).split(":").toList.map(m => m.toInt).take(n)
-//      predictedItemIdsFromFile
-//    }
-//    else {
-//      val popularItemsReader = CSVReader.open(popularItemsPath)
-//      val popularItemIds = popularItemsReader.all().filter(l => l(0) != "itemId").map(l => l(2).toInt).take(n)
-//      popularItemsReader.close()
-//      popularItemIds
-//    }
-    List()
+  override def getTop(userId: Int, n: Int): Future[List[Int]] = {
+    recommendationModel.getOne(userId).map {
+      case Some(recommendation) => recommendation.topItems.take(n)
+      case None => Nil
+    }
   }
 }

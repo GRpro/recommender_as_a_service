@@ -1,5 +1,7 @@
 package gr.ml.analytics.service
 
+import scala.concurrent.Future
+
 /**
   * Current implementation works only with IDs.
   * In future it will be extended to support
@@ -19,5 +21,5 @@ trait RecommenderService {
     * @param n number of recommendation ids to be returned
     * @return ordered list of item ids
     */
-  def getTop(userId: Int, n: Int): List[Int]
+  def getTop(userId: Int, n: Int): Future[List[Int]]
 }
