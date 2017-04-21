@@ -2,6 +2,7 @@ package gr.ml.analytics.cassandra
 
 import com.outworkers.phantom.database.Database
 import com.outworkers.phantom.dsl.KeySpaceDef
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -13,7 +14,7 @@ import scala.concurrent.duration._
   *
   * @param connector Cassandra connector
   */
-class InputDatabase(override val connector: KeySpaceDef) extends Database[InputDatabase](connector) {
+class InputDatabase(override val connector: KeySpaceDef) extends Database[InputDatabase](connector) with LazyLogging {
 
   object recommendationsModel extends ConcreteRecommendationModel with connector.Connector
 
@@ -32,7 +33,9 @@ class InputDatabase(override val connector: KeySpaceDef) extends Database[InputD
     Await.ready(f2, 3.seconds)
     Await.ready(f3, 3.seconds)
   } catch {
-    case _: Throwable => //ignore
+    case e: Throwable =>
+      //ignore
+      logger.warn("Error creating models", e)
   }
 
 }
