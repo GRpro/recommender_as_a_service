@@ -99,8 +99,6 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
     sink.storePredictions(hybridPredictions, hybridPredictionsTable) // TODO should we use spark here?
 
     val finalPredictedIDs = hybridPredictions.select("itemid").collect().map(r => r.getInt(0)).toList
-//    val finalPredictedIDs = hybridPredictions.map(l=>l(1).toInt)
-//    cfPredictionService.persistPredictedIdsForUser(userId, finalPredictedIDs)
     sink.storeRecommendedItemIDs(userId, finalPredictedIDs)
   }
 }

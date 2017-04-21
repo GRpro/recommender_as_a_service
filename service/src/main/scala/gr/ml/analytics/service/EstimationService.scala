@@ -6,6 +6,7 @@ import gr.ml.analytics.service.cf.CFJob
 import gr.ml.analytics.service.contentbased.{CBFJob, DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
 import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
+import org.apache.spark.sql.functions.{col, concat, lit}
 
 object EstimationService extends App with Constants{
   val trainFraction = 0.7
@@ -13,17 +14,22 @@ object EstimationService extends App with Constants{
   val lowerFraction = 0.4
   val subRootDir = "precision"
 
-  Util.loadAndUnzip(subRootDir)
-  divideRatingsIntoTrainAndTest()
-  val numberOfTrainRatings = getNumberOfTrainRatings()
-
   val sparkSession = SparkUtil.sparkSession()
-  val config = ConfigFactory.load("application.conf")
+  import sparkSession.implicits._
+  import org.apache.spark.sql.cassandra._
 
+  val config = ConfigFactory.load("application.conf")
+  val keySpace = config.getString("cassandra.keyspace")
+  val trainRatingsTable = config.getString("cassandra.train_ratings_table")
+  val testRatingsTable = config.getString("cassandra.test_ratings_table")
   val source = new CassandraSource(sparkSession, config)
   val sink = new CassandraSink(sparkSession, config)
   val paramsStorage: ParamsStorage = new RedisParamsStorage
   val hb = new HybridService(mainSubDir, sparkSession, config, source, sink, paramsStorage)
+
+  Util.loadAndUnzip(subRootDir)
+  divideRatingsIntoTrainAndTest()
+  val numberOfTrainRatings = getNumberOfTrainRatings()
 
   var bestAccuracy = 0.0
   var bestParams = (0.0, 0.0)
@@ -35,10 +41,13 @@ object EstimationService extends App with Constants{
     DecisionTreeRegressionBuilder.build(subRootDir)
     )
 
+  val accuracy = estimateAccuracy(upperFraction, lowerFraction) // TODO remove!
+
+
   pipelines.foreach(pipeline => {
     CFJob(sparkSession, config, None, None, paramsStorage.getParams()).run()
     CBFJob(sparkSession, config, None, None, paramsStorage.getParams()).run()
-//    hb.runOneCycle(pipeline)
+
     (0.0 to 1.0 by 0.01).foreach(cfWeight => {
       hb.combinePredictionsForLastUsers(cfWeight)
       val accuracy = estimateAccuracy(upperFraction, lowerFraction)
@@ -54,25 +63,30 @@ object EstimationService extends App with Constants{
   println("Best Accuracy is " + bestAccuracy + " for pipeline: " + bestCBPipeline.getStages +  " and params " + bestParams)
 
   def divideRatingsIntoTrainAndTest(): Unit ={
-    val ratingsReader = CSVReader.open(String.format(ratingsPath, subRootDir)) // TODO replace with all ratings
-    val allRatings = ratingsReader.all().filter(l=>l(0)!="userId")
-    ratingsReader.close()
-    val trainHeaderWriter = CSVWriter.open(String.format(ratingsPath, subRootDir), append = false)
-    trainHeaderWriter.writeRow(List("userId", "itemId", "rating", "timestamp"))
-    trainHeaderWriter.close()
-    val testHeaderWriter = CSVWriter.open(String.format(testRatingsPath, subRootDir), append = false)
-    testHeaderWriter.writeRow(List("userId", "itemId", "rating", "timestamp"))
-    testHeaderWriter.close()
+    val allRatings = source.all.collect().map(r => List(r(0), r(1), r(2))).toList
 
-    val trainWriter = CSVWriter.open(String.format(ratingsPath, subRootDir), append = true)
-    val testWriter = CSVWriter.open(String.format(testRatingsPath, subRootDir), append = true)
     allRatings.groupBy(l=>l(0)).foreach(l=>{
       val trainTestTuple = l._2.splitAt((l._2.size * trainFraction).toInt)
-      trainWriter.writeAll(trainTestTuple._1)
-      testWriter.writeAll(trainTestTuple._2)
+
+      // TODO can I do something generic?
+      trainTestTuple._1
+        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble))
+        .toDF("userid", "itemid", "rating")
+        .select("userid", "itemid", "rating")
+        .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
+        .write.mode("append") // TODO we probably should remove all from the table between the estimation service runs
+        .cassandraFormat(trainRatingsTable, keySpace)
+        .save()
+
+      trainTestTuple._2
+        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble))
+        .toDF("userid", "itemid", "rating")
+        .select("userid", "itemid", "rating")
+        .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
+        .write.mode("append") // TODO we probably should remove all from the table between the estimation service runs
+        .cassandraFormat(testRatingsTable, keySpace)
+        .save()
     })
-    trainWriter.close()
-    testWriter.close()
   }
 
   def getNumberOfTrainRatings(): Int ={

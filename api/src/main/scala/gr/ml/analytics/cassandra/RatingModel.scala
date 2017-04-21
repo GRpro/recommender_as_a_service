@@ -41,7 +41,7 @@ abstract class ConcreteRatingModel extends RatingModel with RootConnector {
 
   def save(rating: Rating): UUID = {
     val id = UUID.randomUUID()
-    insert
+    insert   // TODO WOULD BE CONSISTENT TO SAVE WITH PRIMARY KEY IN FORM userid:itemid (LIKE WE DID FOR PREDICTIONS!!!)
       .value(_.id, id)
       .value(_.userId, rating.userId)
       .value(_.itemId, rating.itemId)

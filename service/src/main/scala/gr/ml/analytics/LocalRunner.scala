@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.{CassandraSink, CassandraSource, HybridService}
 import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
 import gr.ml.analytics.service.cf.CFJob
-import gr.ml.analytics.util.{ParamsStorage, RedisParamsStorage, Util}
+import gr.ml.analytics.util.RedisParamsStorage
 import gr.ml.analytics.service.contentbased.CBFJob
 import gr.ml.analytics.util.{ParamsStorage, Util}
 import org.apache.spark.sql.SparkSession

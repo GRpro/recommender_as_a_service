@@ -19,6 +19,9 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
   private val popularItemsTable: String = config.getString("cassandra.popular_items_table")
   private val hybridPredictionsTable: String = config.getString("cassandra.hybrid_predictions_table")
   private val recommendationsTable: String = config.getString("cassandra.recommendations_table")
+  private val trainRatingsTable: String = config.getString("cassandra.train_ratings_table")
+  private val testRatingsTable: String = config.getString("cassandra.test_ratings_table")
+
 
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
@@ -31,6 +34,8 @@ class CassandraSink(val sparkSession: SparkSession, val config: Config) extends 
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$popularItemsTable (itemid int PRIMARY KEY, rating float, n_ratings int)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$hybridPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$recommendationsTable (userid int PRIMARY KEY, recommended_ids text)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$trainRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$testRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
   }
 
   override def storePredictions(predictions: DataFrame, predictionsTable: String): Unit = {
