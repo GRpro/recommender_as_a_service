@@ -1,6 +1,5 @@
 package gr.ml.analytics.service
 
-import java.io.File
 import java.nio.file.Paths
 
 /**
@@ -10,9 +9,11 @@ trait Constants {
   val smallDatasetFileName: String = "ml-latest-small.zip"
   val smallDatasetUrl: String = s"http://files.grouplens.org/datasets/movielens/$smallDatasetFileName"
 
-  val datasetsDirectory: String = "data"
+  val rootDataDir = "data"
+  val mainSubDir = "main"
+  val datasetsDirectory: String = Paths.get(rootDataDir, "%s").toAbsolutePath.toString
   val ratingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString
-  val predictionsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "predictions.csv").toAbsolutePath.toString // TODO move into predictions folder
+  val predictionsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "predictions.csv").toAbsolutePath.toString
   val moviesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString
   val moviesWithFeaturesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "movies-with-features.csv").toAbsolutePath.toString
   val ratingsWithFeaturesSVMPath: String = Paths.get(datasetsDirectory, "libsvm", "ratings-with-features-libsvm-user-%s.txt").toAbsolutePath.toString
@@ -27,4 +28,6 @@ trait Constants {
   val contentBasedPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "content-based-predictions").toAbsolutePath.toString
   val finalPredictionsDirectoryPath: String = Paths.get(datasetsDirectory, "predictions", "final-predictions").toAbsolutePath.toString
   val popularItemsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "popular-items.csv").toAbsolutePath.toString
+  val testRatingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "test-ratings.csv").toAbsolutePath.toString // TODO extract ml-latest-small into separate field and rename it
+  val ratingsPathSmall: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
 }

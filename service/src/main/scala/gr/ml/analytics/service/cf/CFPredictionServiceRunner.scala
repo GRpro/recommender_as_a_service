@@ -4,32 +4,23 @@ import java.io.File
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.util.{SparkUtil, Util}
+import gr.ml.analytics.util.{DataUtil, SparkUtil, Util}
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
-object CFPredictionService extends Constants {
+class CFPredictionService(val subRootDir: String) extends Constants {
   val toInt: UserDefinedFunction = udf[Int, String](_.toInt)
   val toDouble: UserDefinedFunction = udf[Double, String](_.toDouble)
+  val dataUtil = new DataUtil(subRootDir)
 
-  val sparkSession = SparkUtil.sparkSession()
-  import sparkSession.implicits._
-
-  def getUserIdsFromLastNRatings(lastN: Int): Set[Int] = {
-    val reader = CSVReader.open(ratingsPath)
-    val allUserIds = reader.all().filter(r => r(0) != "userId").map(r => r(0).toInt)
-    val recentIds = allUserIds.splitAt(allUserIds.size - lastN)._2.toSet
-    reader.close()
-    recentIds
-  }
-
-  def persistPopularItemIDS(): Unit ={
-    val ratingsReader = CSVReader.open(ratingsPath)
+  def persistPopularItems(): Unit ={
+    println("persistPopularItems")
+    val ratingsReader = CSVReader.open(String.format(ratingsPath,subRootDir))
     val allRatings = ratingsReader.all()
     ratingsReader.close()
-    val mostPopular = allRatings.filter(l=>l(1)!="movieId")
+    val mostPopular = allRatings.filter(l=>l(1)!="itemId")
       .groupBy(l=>l(1))
       .map(t=>(t._1, t._2, t._2.size))
       .map(t=>(t._1, t._2.reduce((l1,l2)=>List(l1(0), l1(1), (l1(2).toDouble + l2(2).toDouble).toString, l1(3))), t._3))
@@ -43,11 +34,11 @@ object CFPredictionService extends Constants {
     val sorted = mostPopular.sortWith(sortByRatingAndPopularity(maxRating,maxNumberOfRatings))
       .map(t=>List(t._1, t._2, t._3))
 
-    val popularItemsHeaderWriter = CSVWriter.open(popularItemsPath, append = false)
+    val popularItemsHeaderWriter = CSVWriter.open(String.format(popularItemsPath, subRootDir), append = false)
     popularItemsHeaderWriter.writeRow(List("itemId", "rating", "nRatings"))
     popularItemsHeaderWriter.close()
 
-    val popularItemsWriter = CSVWriter.open(popularItemsPath, append = true)
+    val popularItemsWriter = CSVWriter.open(String.format(popularItemsPath, subRootDir), append = true)
     popularItemsWriter.writeAll(sorted)
     popularItemsWriter.close()
   }
@@ -68,7 +59,7 @@ object CFPredictionService extends Constants {
       .setMaxIter(5) // TODO extract into settable fields
       .setRegParam(0.01) // TODO extract into settable fields
       .setUserCol("userId")
-      .setItemCol("movieId")
+      .setItemCol("itemId")
       .setRatingCol("rating")
 
     val model = als.fit(ratingsDF)
@@ -77,121 +68,95 @@ object CFPredictionService extends Constants {
 
 
   def readModel(): ALSModel ={
-    ALSModel.load(collaborativeModelPath)
+    val spark = SparkUtil.sparkSession()
+    val model = ALSModel.load(String.format(collaborativeModelPath, subRootDir))
+    model
   }
 
   def writeModel(model: ALSModel): Unit = {
-    model.write.overwrite().save(collaborativeModelPath)
+    model.write.overwrite().save(String.format(collaborativeModelPath, subRootDir))
   }
 
   def loadRatings(): DataFrame = {
     val ratingsDF = {
-      val ratingsStringDF = sparkSession.read
+      val ratingsStringDF = SparkUtil.sparkSession().read
         .format("com.databricks.spark.csv")
         .option("header", "true")
         .option("mode", "DROPMALFORMED")
-        .load(CFPredictionService.ratingsPath)
-        .select("userId", "movieId", "rating", "timestamp")
+        .load(String.format(ratingsPath, subRootDir))
+        .select("userId", "itemId", "rating", "timestamp")
 
       ratingsStringDF
         .withColumn("userId", toInt(ratingsStringDF("userId")))
-        .withColumn("movieId", toInt(ratingsStringDF("movieId")))
+        .withColumn("itemId", toInt(ratingsStringDF("itemId")))
         .withColumn("rating", toDouble(ratingsStringDF("rating")))
     }
     ratingsDF
   }
   def updatePredictionsForUser(userId: Int): DataFrame = {
     val predictions: DataFrame = calculatePredictionsForUser(userId, readModel())
-    new File(collaborativePredictionsDirectoryPath).mkdirs()
-    persistPredictionsForUser(userId, predictions, String.format(collaborativePredictionsForUserPath, userId.toString))
+    new File(String.format(collaborativePredictionsDirectoryPath, subRootDir)).mkdirs()
+    dataUtil.persistPredictionsForUser(userId, predictions, String.format(collaborativePredictionsForUserPath, subRootDir, userId.toString))
     predictions
   }
 
   def persistPredictedIdsForUser(userId: Int, predictedItemIds: List[Int]): Unit = {
     import com.github.tototoshi.csv._
-    val writer = CSVWriter.open(predictionsPath, append = true)
+    val writer = CSVWriter.open(String.format(predictionsPath, subRootDir), append = true)
     writer.writeRow(List(userId, predictedItemIds.toArray.mkString(":")))
   }
 
-  def persistPredictionsForUser(userId: Int, predictions: DataFrame, path: String): Unit = {
-    val predictionsHeaderWriter = CSVWriter.open(path, append = false)
-    predictionsHeaderWriter.writeRow(List("userId","itemId","prediction"))
-    predictionsHeaderWriter.close()
-
-    val predictionsWriter = CSVWriter.open(String.format(path), append = true)
-    val predictionsList = predictions.rdd.map(r=>List(userId,r(r.fieldIndex("itemId")).toString.toDouble.toInt,r(r.fieldIndex("prediction")))).collect()
-    predictionsWriter.writeAll(predictionsList)
-    predictionsWriter.close()
-  }
-
   def calculatePredictionsForUser(userId: Int, model: ALSModel): DataFrame = {
+      val sparkSession = SparkUtil.sparkSession()
+      import sparkSession.implicits._
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
       .filter(not(isnan($"prediction")))
-      .orderBy(col("prediction").desc)
+      .select($"itemId", $"prediction".as("rating"))
+      .orderBy(col("rating").desc)
     predictions
   }
 
   def calculatePredictedIdsForUser(userId: Int, model: ALSModel): List[Int] = {
+    val sparkSession = SparkUtil.sparkSession()
+    import sparkSession.implicits._
     val toRateDS: DataFrame = getUserMoviePairsToRate(userId)
     import org.apache.spark.sql.functions._
     val predictions = model.transform(toRateDS)
-      .filter(not(isnan($"prediction")))
-      .orderBy(col("prediction").desc)
+      .filter(not(isnan($"rating")))
+      .orderBy(col("rating").desc)
     val predictedItemIds: List[Int] = predictions.select("itemId").map(row => row.getInt(0)).collect().toList
     predictedItemIds
   }
 
-  def getItemIDsNotRatedByUser(userId: Int): List[Int] = {
-    val ratingsReader = CSVReader.open(ratingsPath)
-    val allRatings = ratingsReader.all()
-    ratingsReader.close()
-
-    val allMovieIDs = getAllItemIDs()
-    val movieIdsRatedByUser = allRatings.filter((p:List[String])=>p(1)!="movieId" && p(0).toInt==userId)
-      .map((p:List[String]) => p(1).toInt).toSet
-    val movieIDsNotRateByUser = allMovieIDs.filter(m => !movieIdsRatedByUser.contains(m))
-    movieIDsNotRateByUser
-  }
-
   def getUserMoviePairsToRate(userId: Int): DataFrame = {
-    val itemIDsNotRateByUser = getItemIDsNotRatedByUser(userId)
+    val sparkSession = SparkUtil.sparkSession()
+    import sparkSession.implicits._
+    val itemIDsNotRateByUser = dataUtil.getItemIDsNotRatedByUser(userId)
     val userMovieList: List[(Int, Int)] = itemIDsNotRateByUser.map(itemId => (userId, itemId))
     userMovieList.toDF("userId", "itemId")
   }
-
-  def getAllItemIDs(): List[Int] ={
-    val reader = CSVReader.open(moviesPath)
-    val allItemIds = reader.all().filter(r=>r(0)!="itemId").map(r=>r(0).toInt)
-    reader.close()
-    allItemIds
-  }
-
-  def getAllUserIds(): Set[Int] ={
-    val reader = CSVReader.open(ratingsPath)
-    val allUserIds = reader.all().filter(r=>r(0)!="userId").map(r=>r(0).toInt).toSet
-    reader.close()
-    allUserIds
-  }
-}
-
-class CFPredictionService {
 }
 
 object CFPredictionServiceRunner extends App with Constants {
 
   Util.windowsWorkAround()
+  val cfPredictionService = new CFPredictionService(mainSubDir)
+  val dataUtil = new DataUtil(mainSubDir)
+
+  // TODO remove!!!
+  cfPredictionService.updatePredictionsForUser(777)
 
   /*
     Periodically run batch job which updates model
   */
   while(true) {
     Thread.sleep(1000)
-    Util.tryAndLog(CFPredictionService.updateModel(), "Collaborative:: Updating model")
-    val userIds: Set[Int] = CFPredictionService.getUserIdsFromLastNRatings(1000)
+    Util.tryAndLog(cfPredictionService.updateModel(), "Collaborative:: Updating model")
+    val userIds: Set[Int] = dataUtil.getUserIdsFromLastNRatings(1000)
     for(userId <- userIds){
-      Util.tryAndLog(CFPredictionService.updatePredictionsForUser(userId), "Collaborative:: Updating predictions for User " + userId)
+      Util.tryAndLog(cfPredictionService.updatePredictionsForUser(userId), "Collaborative:: Updating predictions for User " + userId)
     }
   }
 }

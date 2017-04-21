@@ -18,6 +18,7 @@
 package gr.ml.analytics.service.contentbased
 
 import gr.ml.analytics.service.Constants
+import gr.ml.analytics.service.contentbased.RandomForestEstimatorBuilder.ratingsWithFeaturesSVMPath
 import gr.ml.analytics.util.SparkUtil
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql.functions.col
@@ -29,10 +30,10 @@ object RegressionSelector extends App with Constants {
   val rfAvgPrecision = getAveragePrecision(RandomForestEstimatorBuilder.build)
   val lrAvgPrecision = getAveragePrecision(LinearRegressionWithElasticNetBuilder.build)
 
-  def getAveragePrecision(buildPipeline: Int => Pipeline): Double = {
+  def getAveragePrecision(buildPipeline: String => Pipeline): Double = {
     var allPrecisions: mutable.MutableList[Double] = mutable.MutableList()
     for (userId <- Range(1, 10)) { // TODO unhardcode userId range, can use more functional style I guess
-      val precision: Double = evaluatePrecisionForUser(userId, buildPipeline(userId))
+      val precision: Double = evaluatePrecisionForUser(userId, buildPipeline(mainSubDir))
       if (precision != 0.0 && !precision.isNaN)
         allPrecisions += precision
     }
@@ -52,7 +53,7 @@ object RegressionSelector extends App with Constants {
     val predictions = model.transform(testData)
 
     val numberOfPositivelyRated = testData.filter($"label" >= 4.0).count().toInt
-    val tp = predictions.orderBy(col("prediction").desc)
+    val tp = predictions.orderBy(col("rating").desc)
       .limit(numberOfPositivelyRated)
       .filter($"label" >= 4.0).count()
 
