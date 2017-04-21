@@ -2,17 +2,16 @@ package gr.ml.analytics.util
 
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import gr.ml.analytics.service.Constants
-import gr.ml.analytics.service.cf.CFPredictionService
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.ListMap
 
-object GenresFeatureEngineering extends App with Constants {
+class GenresFeatureEngineering(val subRootDir: String) extends Constants {
 
   val progressLogger = LoggerFactory.getLogger("progressLogger")
 
   def getAllMovies(): List[List[String]] ={
-    val moviesReader = CSVReader.open(moviesPath)
+    val moviesReader = CSVReader.open(String.format(moviesPath,subRootDir))
     val allMovies: List[List[String]] = moviesReader.all().filter(p => p(0) != "movieId")
     moviesReader.close()
     allMovies
@@ -30,10 +29,10 @@ object GenresFeatureEngineering extends App with Constants {
   def createAllMoviesWithFeaturesFile(): Unit ={
     val moviesWithFeatures = getMoviesWithFeatures()
 
-    val movieHeaderWriter = CSVWriter.open(moviesWithFeaturesPath, append = false)
+    val movieHeaderWriter = CSVWriter.open(String.format(moviesWithFeaturesPath, subRootDir), append = false)
     movieHeaderWriter.writeRow(moviesWithFeatures(0).map(t=>t._1).toList)
     movieHeaderWriter.close()
-    val movieWriter = CSVWriter.open(moviesWithFeaturesPath, append = true)
+    val movieWriter = CSVWriter.open(String.format(moviesWithFeaturesPath, subRootDir), append = true)
     moviesWithFeatures.foreach(m => {
       val list = m.map(t=>t._2).toList
       movieWriter.writeRow(list)
