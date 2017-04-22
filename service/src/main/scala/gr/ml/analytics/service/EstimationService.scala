@@ -14,7 +14,8 @@ object EstimationService extends App with Constants{
   val lowerFraction = 0.4
   val subRootDir = "precision"
 
-  val sparkSession = SparkUtil.sparkSession()
+  implicit val sparkSession = SparkUtil.sparkSession()
+
   import sparkSession.implicits._
   import org.apache.spark.sql.cassandra._
 
@@ -22,10 +23,14 @@ object EstimationService extends App with Constants{
   val keySpace = config.getString("cassandra.keyspace")
   val trainRatingsTable = config.getString("cassandra.train_ratings_table")
   val testRatingsTable = config.getString("cassandra.test_ratings_table")
-  val source = new CassandraSource(sparkSession, config)
-  val sink = new CassandraSink(sparkSession, config)
+
+  val featureExtractor = new RowFeatureExtractor
+
+  val source = new CassandraSource(config, featureExtractor)
+  val sink = new CassandraSink(config)
+
   val paramsStorage: ParamsStorage = new RedisParamsStorage
-  val hb = new HybridService(mainSubDir, sparkSession, config, source, sink, paramsStorage)
+  val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
 
   Util.loadAndUnzip(subRootDir)
   divideRatingsIntoTrainAndTest()
@@ -45,8 +50,8 @@ object EstimationService extends App with Constants{
 
 
   pipelines.foreach(pipeline => {
-    CFJob(sparkSession, config, None, None, paramsStorage.getParams()).run()
-    CBFJob(sparkSession, config, None, None, paramsStorage.getParams()).run()
+    CFJob(config, source, sink, paramsStorage.getParams()).run()
+    CBFJob(config, source, sink, pipeline, paramsStorage.getParams()).run()
 
     (0.0 to 1.0 by 0.01).foreach(cfWeight => {
       hb.combinePredictionsForLastUsers(cfWeight)

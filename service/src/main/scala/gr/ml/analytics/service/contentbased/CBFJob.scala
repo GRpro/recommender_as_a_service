@@ -6,12 +6,11 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 
-class CBFJob(val sparkSession: SparkSession,
-             val config: Config,
+class CBFJob(val config: Config,
              val source: Source,
              val sink: Sink,
              val params: Map[String, Any],
-             pipeline: => Pipeline) {
+             val pipeline: Pipeline)(implicit val sparkSession: SparkSession) {
 
   private val ONE_DAY = 24 * 3600 // TODO read from params
   private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
@@ -57,25 +56,14 @@ class CBFJob(val sparkSession: SparkSession,
 
 object CBFJob {
 
-  def apply(sparkSession: SparkSession,
-            config: Config,
-            sourceOption: Option[Source],
-            sinkOption: Option[Sink],
+  def apply(config: Config,
+            source: Source,
+            sink: Sink,
+            pipeline: Pipeline,
             params: Map[String, Any]
-           ): CBFJob = {
+           )(implicit sparkSession: SparkSession): CBFJob = {
 
-    val source = sourceOption match {
-      case Some(s) => s
-      case None => new CassandraSource(sparkSession, config)
-    }
-    val sink = sinkOption match {
-      case Some(s) => s
-      case None => new CassandraSink(sparkSession, config)
-    }
-
-    lazy val pipeline = LinearRegressionWithElasticNetBuilder.build("")
-
-    new CBFJob(sparkSession, config, source, sink, params, pipeline)
+    new CBFJob(config, source, sink, params, pipeline)
   }
 
 

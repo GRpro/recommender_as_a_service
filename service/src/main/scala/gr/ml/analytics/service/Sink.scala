@@ -10,11 +10,5 @@ trait Sink {
     */
   def storePredictions(predictions: DataFrame, table: String)
 
-  /**
-    * Persist popular items
-    *
-    */
-  def persistPopularItems()
-
   def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int]): Unit
 }

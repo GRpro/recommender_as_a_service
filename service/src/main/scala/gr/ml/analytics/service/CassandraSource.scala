@@ -1,14 +1,15 @@
 package gr.ml.analytics.service
+
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.config.Config
 import gr.ml.analytics.cassandra.CassandraUtil
-import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.util.parsing.json.JSON
 
-class CassandraSource(val sparkSession: SparkSession, val config: Config) extends Source {
+class CassandraSource(val config: Config,
+                      val featureExtractor: FeatureExtractor)(implicit val sparkSession: SparkSession) extends Source {
 
   private val schemaId: Int = config.getInt("items_schema_id")
 
@@ -24,8 +25,6 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   private val timestampCol = "timestamp"
   private val predictionCol = "prediction"
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
-
-//  spark.conf.set("spark.sql.crossJoin.enabled", "true")
 
   import spark.implicits._
 
@@ -106,31 +105,12 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
 
   override def getAllItemsAndFeatures(): DataFrame = {
 
-    val allowedTypes = Set("double", "float")
-
-    val idColumnName = schema("id").asInstanceOf[Map[String, String]]("name")
-    val featureColumnNames = schema("features").asInstanceOf[List[Map[String, String]]]
-      .filter((colDescription: Map[String, Any]) => allowedTypes.contains(colDescription("type").asInstanceOf[String].toLowerCase))
-      .map(colDescription => colDescription("name"))
-
-
     val itemsRowDF = spark
       .read
       .format("org.apache.spark.sql.cassandra")
       .options(Map("table" -> itemsTable, "keyspace" -> keyspace))
       .load()
-      .select(idColumnName, featureColumnNames:_*)
 
-    val itemsDF = itemsRowDF.map(row => {
-      val id = row.getInt(0)
-      val featureValues = (1 until row.length).map(idx => row.getDouble(idx))
-      val featureValuesArr: Array[Double] = featureValues.toArray
-      (id, Vectors.dense(featureValuesArr))
-    }).toDF("itemid", "features")
-
-    itemsDF
-
-    // the format of libsvm
-    // see http://stackoverflow.com/questions/41416291/how-to-prepare-data-into-a-libsvm-format-from-dataframe
+    featureExtractor.convertFeatures(itemsRowDF, schema)
   }
 }
