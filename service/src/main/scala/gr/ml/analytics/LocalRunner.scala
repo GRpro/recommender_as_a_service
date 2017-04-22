@@ -1,7 +1,7 @@
 package gr.ml.analytics
 
 import com.typesafe.config.ConfigFactory
-import gr.ml.analytics.service.{CassandraSink, CassandraSource, HybridService, RowFeatureExtractor}
+import gr.ml.analytics.service._
 import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
 import gr.ml.analytics.service.cf.CFJob
 import gr.ml.analytics.util.RedisParamsStorage
@@ -31,13 +31,25 @@ object LocalRunner {
     Util.windowsWorkAround()
 
     val config = ConfigFactory.load("application.conf")
+
+    val schemaId = 0
+
     val paramsStorage: ParamsStorage = new RedisParamsStorage
 
     implicit val spark = getSparkSession
 
     val params = paramsStorage.getParams()
 
-    val featureExtractor = new RowFeatureExtractor
+    // val featureExtractor = new RowFeatureExtractor
+
+    // function to get feature ration from Redis
+    def getRatio(featureName: String): Double = {
+      val itemFeatureRationPattern = "schema.%s.item.feature.%s.ratio"
+      paramsStorage.getParam(itemFeatureRationPattern.format(schemaId, featureName))
+        .toString.toDouble
+    }
+
+    val featureExtractor = new WeightedFeatureExtractor(getRatio)
 
     val pipeline = LinearRegressionWithElasticNetBuilder.build("")
 
