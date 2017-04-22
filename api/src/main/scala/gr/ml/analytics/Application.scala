@@ -9,6 +9,7 @@ import gr.ml.analytics.api.{ItemsAPI, RatingsAPI, RecommenderAPI, SchemasAPI}
 import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
 import gr.ml.analytics.client.SchemasAPIClient
 import gr.ml.analytics.service._
+import akka.http.scaladsl.server.Directives._
 
 import scala.io.StdIn
 
@@ -39,7 +40,7 @@ object Application extends App {
 
   // create services
   val schemasService: SchemaService = new SchemaServiceImpl(inputDatabase)
-  val schemasClient: SchemasAPIClient = new SchemasAPIClient(serviceSchemasClientURI)
+  val schemasClient: SchemasAPIClient = new SchemasAPIClient(serviceClientURI)
 
   val recommenderService: RecommenderService = new RecommenderServiceImpl(inputDatabase)
   var itemsService: ItemService = new ItemServiceImpl(inputDatabase, schemasClient)
@@ -51,25 +52,14 @@ object Application extends App {
   val schemasApi = new SchemasAPI(schemasService)
   val ratingsApi = new RatingsAPI(ratingsService)
 
-  val recommenderAPIBindingFuture = Http().bindAndHandle(recommenderApi.route,
-    interface = serviceRecommenderListenerInterface,
-    port = serviceRecommenderListenerPort)
-
-  val itemsAPIBindingFuture = Http().bindAndHandle(itemsApi.route,
-    interface = serviceItemsListenerInterface,
-    port = serviceItemsListenerPort)
-
-  val schemasAPIBindingFuture = Http().bindAndHandle(schemasApi.route,
-    interface = serviceSchemasListenerInterface,
-    port = serviceSchemasListenerPort)
-
-  val ratingsAPIBindingFuture = Http().bindAndHandle(ratingsApi.route,
-    interface = serviceRatingsListenerInterface,
-    port = serviceRatingsListenerPort)
+  val recommenderAPIBindingFuture = Http().bindAndHandle(
+    recommenderApi.route ~ itemsApi.route ~ schemasApi.route ~ ratingsApi.route,
+    interface = serviceListenerInterface,
+    port = serviceListenerPort)
 
   StdIn.readLine() // let it run until user presses return
 
-  List(recommenderAPIBindingFuture, itemsAPIBindingFuture)
+  List(recommenderAPIBindingFuture)
     .foreach(_.flatMap(_.unbind()) // trigger unbinding from the port
     .onComplete(_ ⇒ system.terminate())) // and shutdown when done
 
