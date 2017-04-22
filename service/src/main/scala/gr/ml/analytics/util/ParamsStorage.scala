@@ -36,7 +36,8 @@ class RedisParamsStorage extends ParamsStorage {
     val hbCollaborativeWeight = r.hmget(config.getString("redis.ml_params_hash"), "hb_collaborative_weight").get.get("hb_collaborative_weight")
     val hbLastNSeconds = r.hmget(config.getString("redis.ml_params_hash"), "hb_last_n_seconds").get.get("hb_last_n_seconds")
 
-    val map = Map("cf_rank" -> cfRank.get,
+    val map = Map(
+      "cf_rank" -> cfRank.get,
       "cf_reg_param" -> cfRegParam.get,
       "cb_pipeline_id" -> cbPipelineId.get,
       "hb_collaborative_weight" -> hbCollaborativeWeight.get,
