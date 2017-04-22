@@ -10,5 +10,8 @@ trait Sink {
     */
   def storePredictions(predictions: DataFrame, table: String)
 
-  def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int]): Unit
+  def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int])
+
+  def removePredictions(table: String)
+
 }

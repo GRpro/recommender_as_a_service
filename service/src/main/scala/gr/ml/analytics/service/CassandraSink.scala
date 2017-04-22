@@ -39,22 +39,25 @@ class CassandraSink(val config: Config)
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$testRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
   }
 
+  override def removePredictions(predictionsTable: String): Unit = {
+    CassandraConnector(sparkSession.sparkContext).withSessionDo { session =>
+      session.execute(s"TRUNCATE $keyspace.$predictionsTable")
+    }
+  }
+
   override def storePredictions(predictions: DataFrame, predictionsTable: String): Unit = {
     predictions
       .select(col("userId").as("userid"), col("itemId").as("itemid"), col("prediction"))
       .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
-      .write.mode("overwrite")
+      .write.mode("append")
       .cassandraFormat(predictionsTable, keyspace)
       .save()
   }
 
   override def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int]): Unit = {
-    List((userId, recommendedItemIds.toArray.mkString(":")))
-      .toDF("userid", "recommended_ids")
-      .write.mode("append")
-      .cassandraFormat(recommendationsTable, keyspace)
-      .save()
-
+    val recommendedIDsString = recommendedItemIds.toArray.mkString(":")
+    CassandraConnector(sparkSession.sparkContext).withSessionDo { session =>
+      session.execute(s"UPDATE $keyspace.$recommendationsTable SET recommended_ids = '$recommendedIDsString' WHERE userid = $userId")
+    }
   }
-
 }

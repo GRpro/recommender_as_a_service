@@ -4,6 +4,7 @@ import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.cf.CFJob
 import gr.ml.analytics.service.contentbased.{CBFJob, DecisionTreeRegressionBuilder, LinearRegressionWithElasticNetBuilder, RandomForestEstimatorBuilder}
+import gr.ml.analytics.service.popular.PopularItemsJob
 import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql.functions.{col, concat, lit}
@@ -33,6 +34,9 @@ object EstimationService extends App with Constants{
   val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
 
   Util.loadAndUnzip(subRootDir)
+
+  PopularItemsJob(source, config).run()
+
   divideRatingsIntoTrainAndTest()
   val numberOfTrainRatings = getNumberOfTrainRatings()
 
@@ -45,9 +49,6 @@ object EstimationService extends App with Constants{
     RandomForestEstimatorBuilder.build(subRootDir),
     DecisionTreeRegressionBuilder.build(subRootDir)
     )
-
-  val accuracy = estimateAccuracy(upperFraction, lowerFraction) // TODO remove!
-
 
   pipelines.foreach(pipeline => {
     CFJob(config, source, sink, paramsStorage.getParams()).run()

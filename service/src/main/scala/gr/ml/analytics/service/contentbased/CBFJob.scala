@@ -18,7 +18,7 @@ class CBFJob(val config: Config,
   import sparkSession.implicits._
 
   def run(): Unit = {
-
+    sink.removePredictions(cbPredictionsTable)
     val itemAndFeaturesDF = source.getAllItemsAndFeatures()
 
     for (userId <- source.getUserIdsForLastNSeconds(ONE_DAY)) {

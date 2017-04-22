@@ -2,7 +2,6 @@ package gr.ml.analytics.service
 
 import java.io.File
 
-import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.{Config, ConfigFactory}
 import gr.ml.analytics.service.cf.{CFJob, CFPredictionService}
 import gr.ml.analytics.service.contentbased.{CBPredictionService, RandomForestEstimatorBuilder}
@@ -103,6 +102,7 @@ class HybridService(val subRootDir: String,
       .sort($"prediction".desc)
       .limit(100) // TODO extract to config
 
+    sink.removePredictions(hybridPredictionsTable)
     // TODO we probably don't need to save it, since final predictions is enough.. check if we benefit in time if not persisting it
     sink.storePredictions(hybridPredictions, hybridPredictionsTable) // TODO should we use spark here?
 

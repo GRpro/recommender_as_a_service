@@ -22,7 +22,7 @@ class CFJob(val config: Config,
     * Spark job entry point
     */
   def run(): Unit = {
-
+    sink.removePredictions(cfPredictionsTable)
     val allRatingsDF = source.all.select("userId", "itemId", "rating")
 
     val rank = params("cf_rank").toString.toInt
