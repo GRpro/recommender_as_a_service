@@ -9,6 +9,8 @@ import scala.concurrent.Future
 class RecommenderServiceImpl(inputDatabase: InputDatabase) extends RecommenderService with LazyLogging {
 
   private lazy val recommendationModel = inputDatabase.recommendationsModel
+  private lazy val clusteredItemsModel = inputDatabase.clusteredItemsModel
+  private lazy val ratingsModel = inputDatabase.ratingModel
 
   /**
     * @inheritdoc

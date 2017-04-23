@@ -14,4 +14,6 @@ trait Sink {
 
   def clearTable(table: String)
 
+  def storeItemClusters(itemClustersDF: DataFrame)
+
 }

@@ -22,6 +22,7 @@ class CassandraSink(val config: Config)
   private val recommendationsTable: String = config.getString("cassandra.recommendations_table")
   private val trainRatingsTable: String = config.getString("cassandra.train_ratings_table")
   private val testRatingsTable: String = config.getString("cassandra.test_ratings_table")
+  private val itemClustersTable: String = config.getString("cassandra.item_clusters_table")
 
   private val userIdCol = "userid"
   private val itemIdCol = "itemid"
@@ -34,6 +35,8 @@ class CassandraSink(val config: Config)
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$popularItemsTable (itemid int PRIMARY KEY, rating float, n_ratings int)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$hybridPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$recommendationsTable (userid int PRIMARY KEY, recommended_ids text)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$trainRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$itemClustersTable (itemid int PRIMARY KEY, similar_items text)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$testRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float, timestamp int)")
   }
 
@@ -57,5 +60,13 @@ class CassandraSink(val config: Config)
     CassandraConnector(sparkSession.sparkContext).withSessionDo { session =>
       session.execute(s"UPDATE $keyspace.$recommendationsTable SET recommended_ids = '$recommendedIDsString' WHERE userid = $userId")
     }
+  }
+
+  override def storeItemClusters(itemClustersDF: DataFrame): Unit = {
+    itemClustersDF
+      .select("itemid", "similar_items")
+      .write.mode("append")
+      .cassandraFormat(itemClustersTable, keyspace)
+      .save()
   }
 }

@@ -9,7 +9,6 @@ import scala.util.parsing.json.JSONObject
 
 class ItemServiceImpl(val inputDatabase: InputDatabase, val schemasClient: SchemasAPIClient) extends ItemService with LazyLogging {
 
-
   /**
     * @inheritdoc
     */

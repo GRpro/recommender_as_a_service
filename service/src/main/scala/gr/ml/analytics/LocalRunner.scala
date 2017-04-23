@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service._
 import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
 import gr.ml.analytics.service.cf.CFJob
+import gr.ml.analytics.service.clustering.ItemClusteringJob
 import gr.ml.analytics.util.RedisParamsStorage
 import gr.ml.analytics.service.contentbased.{CBFJob, LinearRegressionWithElasticNetBuilder}
 import gr.ml.analytics.service.popular.PopularItemsJob
@@ -76,6 +77,7 @@ object LocalRunner {
     val cfJob = CFJob(config, source, sink, params)
     val cbfJob = CBFJob(config, source, sink, pipeline, params)
     val popularItemsJob = PopularItemsJob(source, config)
+//    val clusteringJob = ItemClusteringJob(source, sink, config)
 
     val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
 
@@ -84,8 +86,10 @@ object LocalRunner {
       cfJob.run()
       cbfJob.run()
       popularItemsJob.run()
-
       hb.combinePredictionsForLastUsers(0.1)
+//      clusteringJob.run()
+
+
       Thread.sleep(INTERVAL_MS)
 
     } while(ITERATIVE)

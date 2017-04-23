@@ -16,4 +16,7 @@ package object domain {
 
   object Recommendation
 
+  case class ClusteredItems(itemId: Int, similarItems: Set[Int])
+
+  object ClusteredItems
 }
