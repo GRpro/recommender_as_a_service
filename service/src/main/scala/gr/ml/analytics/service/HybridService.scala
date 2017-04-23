@@ -38,7 +38,7 @@ class HybridService(val subRootDir: String,
       CFJob(config, source, sink, paramsStorage.getParams()).run() // TODO add logging somehow
 
       // CBJob:
-      val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toLong
+      val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
       val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
       for(userId <- userIds){
         Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
@@ -56,7 +56,7 @@ class HybridService(val subRootDir: String,
     val startTime = System.currentTimeMillis()
     if(! new File(String.format(moviesWithFeaturesPath, subRootDir)).exists())
       new GenresFeatureEngineering(subRootDir).createAllMoviesWithFeaturesFile()
-    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toLong
+    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
     val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
     userIds.foreach(csv2svmConverter.createSVMRatingsFileForUser)
     if(! new File(allMoviesSVMPath).exists())
@@ -68,7 +68,7 @@ class HybridService(val subRootDir: String,
 
 //  def runOneCycle(cbPipeline: Pipeline): Unit ={
 //    Util.tryAndLog(cfPredictionService.updateModel(), subRootDir + " :: Collaborative:: Updating model")
-//    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+//    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toInt
 //    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
 //    for(userId <- userIds){
 //      Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
@@ -83,7 +83,8 @@ class HybridService(val subRootDir: String,
   }
 
   def combinePredictionsForLastUsers(collaborativeWeight: Double): Unit ={
-    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toLong
+    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
+    sink.clearTable(hybridPredictionsTable)
     val userIds = source.getUserIdsForLastNSeconds(lastNSeconds) // TODO not good, that we have to get it every time...
     for(userId <- userIds){
       combinePredictionsForUser(userId, collaborativeWeight)
@@ -100,10 +101,8 @@ class HybridService(val subRootDir: String,
       .withColumn("hybrid_prediction", $"d1.prediction" + $"d2.prediction")
       .select($"d1.key", $"d2.userid", $"d2.itemid", $"hybrid_prediction".as("prediction"))
       .sort($"prediction".desc)
-      .limit(100) // TODO extract to config
+      .limit(1000) // TODO extract to config
 
-    sink.removePredictions(hybridPredictionsTable)
-    // TODO we probably don't need to save it, since final predictions is enough.. check if we benefit in time if not persisting it
     sink.storePredictions(hybridPredictions, hybridPredictionsTable) // TODO should we use spark here?
 
     val finalPredictedIDs = hybridPredictions.select("itemid").collect().map(r => r.getInt(0)).toList
@@ -113,7 +112,7 @@ class HybridService(val subRootDir: String,
 
 object HybridServiceRunner extends App with Constants{
   Util.windowsWorkAround()
-  Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
+  Util.loadAndUnzip(mainSubDir)
   //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
   val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)

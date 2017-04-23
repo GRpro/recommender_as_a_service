@@ -12,6 +12,6 @@ trait Sink {
 
   def storeRecommendedItemIDs(userId: Int, recommendedItemIds: List[Int])
 
-  def removePredictions(table: String)
+  def clearTable(table: String)
 
 }

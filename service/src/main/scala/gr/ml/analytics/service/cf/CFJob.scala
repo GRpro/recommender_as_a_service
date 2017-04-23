@@ -14,7 +14,8 @@ class CFJob(val config: Config,
             val sink: Sink,
             val params: Map[String, Any])(implicit val sparkSession: SparkSession) {
 
-  private val ONE_DAY = 24 * 3600   // TODO Set it from redis
+  private val lastNSeconds = params.get("hb_last_n_seconds").get.toString.toInt
+  private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
 
 
@@ -22,8 +23,8 @@ class CFJob(val config: Config,
     * Spark job entry point
     */
   def run(): Unit = {
-    sink.removePredictions(cfPredictionsTable)
-    val allRatingsDF = source.all.select("userId", "itemId", "rating")
+    sink.clearTable(cfPredictionsTable)
+    val allRatingsDF = source.getRatings(ratingsTable).select("userId", "itemId", "rating")
 
     val rank = params("cf_rank").toString.toInt
     val regParam = params("cf_reg_param").toString.toDouble
@@ -37,7 +38,7 @@ class CFJob(val config: Config,
 
     val model = als.fit(allRatingsDF)
 
-    for(userId <- source.getUserIdsForLastNSeconds(ONE_DAY)){
+    for(userId <- source.getUserIdsForLastNSeconds(lastNSeconds)){
      val notRatedPairsDF = source.getUserItemPairsToRate(userId)
       val predictedRatingsDS = model.transform(notRatedPairsDF)
         .filter(col("prediction").isNotNull)

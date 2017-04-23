@@ -15,7 +15,7 @@ class RatingModel extends CassandraTable[ConcreteRatingModel, Rating] {
 
   override def tableName: String = "ratings"
 
-  object id extends UUIDColumn(this) with PartitionKey
+  object key extends StringColumn(this) with PartitionKey
 
   object userId extends IntColumn(this)
 
@@ -39,19 +39,16 @@ abstract class ConcreteRatingModel extends RatingModel with RootConnector {
       .fetch
   }
 
-  def save(rating: Rating): UUID = {
-    val id = UUID.randomUUID()
-    insert   // TODO WOULD BE CONSISTENT TO SAVE WITH PRIMARY KEY IN FORM userid:itemid (LIKE WE DID FOR PREDICTIONS!!!)
-      .value(_.id, id)
+  def save(rating: Rating) = {
+    insert
+      .value(_.key, rating.userId + ":" + rating.itemId)
       .value(_.userId, rating.userId)
       .value(_.itemId, rating.itemId)
       .value(_.rating, rating.rating)
       .value(_.timestamp, rating.timestamp)
       .consistencyLevel_=(ConsistencyLevel.ONE)
       .future()
-    id
   }
-
 }
 
 

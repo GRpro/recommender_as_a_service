@@ -12,16 +12,17 @@ class CBFJob(val config: Config,
              val params: Map[String, Any],
              val pipeline: Pipeline)(implicit val sparkSession: SparkSession) {
 
-  private val ONE_DAY = 24 * 3600 // TODO read from params
+  private val lastNSeconds = params.get("hb_last_n_seconds").get.toString.toInt
+  private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
 
   import sparkSession.implicits._
 
   def run(): Unit = {
-    sink.removePredictions(cbPredictionsTable)
+    sink.clearTable(cbPredictionsTable)
     val itemAndFeaturesDF = source.getAllItemsAndFeatures()
 
-    for (userId <- source.getUserIdsForLastNSeconds(ONE_DAY)) {
+    for (userId <- source.getUserIdsForLastNSeconds(lastNSeconds)) {
       // each user requires a separate model
       // CBF steps:
       // 1. select DataFrame of (label, features) for a given user
@@ -30,7 +31,7 @@ class CBFJob(val config: Config,
       // 4. perform predictions using created model
 
       // TODO Slow. Improve performance
-      val trainingDF = source.all
+      val trainingDF = source.getRatings(ratingsTable)
         .filter($"userid" === userId)
         .select("itemid", "rating")
         .as("d1").join(itemAndFeaturesDF.as("d2"), $"d1.itemid" === $"d2.itemid")

@@ -15,7 +15,6 @@ class CassandraSink(val config: Config)
   import spark.implicits._
 
   private val keyspace: String = config.getString("cassandra.keyspace")
-  private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
   private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
   private val popularItemsTable: String = config.getString("cassandra.popular_items_table")
@@ -35,13 +34,12 @@ class CassandraSink(val config: Config)
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$popularItemsTable (itemid int PRIMARY KEY, rating float, n_ratings int)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$hybridPredictionsTable (key text PRIMARY KEY, userid int, itemid int, prediction float)")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$recommendationsTable (userid int PRIMARY KEY, recommended_ids text)")
-    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$trainRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
-    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$testRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float)")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.$testRatingsTable (key text PRIMARY KEY, userid int, itemid int, rating float, timestamp int)")
   }
 
-  override def removePredictions(predictionsTable: String): Unit = {
+  override def clearTable(table: String): Unit = {
     CassandraConnector(sparkSession.sparkContext).withSessionDo { session =>
-      session.execute(s"TRUNCATE $keyspace.$predictionsTable")
+      session.execute(s"TRUNCATE $keyspace.$table")
     }
   }
 

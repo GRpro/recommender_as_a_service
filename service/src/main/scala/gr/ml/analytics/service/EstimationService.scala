@@ -1,5 +1,7 @@
 package gr.ml.analytics.service
 
+import java.util.UUID
+
 import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service.cf.CFJob
@@ -22,8 +24,11 @@ object EstimationService extends App with Constants{
 
   val config = ConfigFactory.load("application.conf")
   val keySpace = config.getString("cassandra.keyspace")
+  val ratingsTable = config.getString("cassandra.ratings_table")
   val trainRatingsTable = config.getString("cassandra.train_ratings_table")
   val testRatingsTable = config.getString("cassandra.test_ratings_table")
+  val hybridPredictionsTable = config.getString("cassandra.hybrid_predictions_table")
+
 
   val featureExtractor = new RowFeatureExtractor
 
@@ -31,30 +36,28 @@ object EstimationService extends App with Constants{
   val sink = new CassandraSink(config)
 
   val paramsStorage: ParamsStorage = new RedisParamsStorage
+  val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
   val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
 
   Util.loadAndUnzip(subRootDir)
-
   PopularItemsJob(source, config).run()
 
   divideRatingsIntoTrainAndTest()
-  val numberOfTrainRatings = getNumberOfTrainRatings()
-
   var bestAccuracy = 0.0
   var bestParams = (0.0, 0.0)
   var bestCBPipeline: Pipeline = null
 
   val pipelines:List[Pipeline] = List(
-    LinearRegressionWithElasticNetBuilder.build(subRootDir),
-    RandomForestEstimatorBuilder.build(subRootDir),
-    DecisionTreeRegressionBuilder.build(subRootDir)
+    LinearRegressionWithElasticNetBuilder.build(subRootDir)//,
+//    RandomForestEstimatorBuilder.build(subRootDir),
+//    DecisionTreeRegressionBuilder.build(subRootDir)
     )
 
   pipelines.foreach(pipeline => {
     CFJob(config, source, sink, paramsStorage.getParams()).run()
     CBFJob(config, source, sink, pipeline, paramsStorage.getParams()).run()
 
-    (0.0 to 1.0 by 0.01).foreach(cfWeight => {
+    (0.1 to 1.0 by 0.05).foreach(cfWeight => {
       hb.combinePredictionsForLastUsers(cfWeight)
       val accuracy = estimateAccuracy(upperFraction, lowerFraction)
       println("LinearRegressionWithElasticNetBuilder:: Weights: " + cfWeight + ", " + (1-cfWeight) + " => Accuracy: " + accuracy)
@@ -69,27 +72,29 @@ object EstimationService extends App with Constants{
   println("Best Accuracy is " + bestAccuracy + " for pipeline: " + bestCBPipeline.getStages +  " and params " + bestParams)
 
   def divideRatingsIntoTrainAndTest(): Unit ={
-    val allRatings = source.all.collect().map(r => List(r(0), r(1), r(2))).toList
+    val allRatings = source.getRatings(ratingsTable).collect().map(r => List(r(0), r(1), r(2), r(3))).toList
+    sink.clearTable(ratingsTable) // we are going to only save train ratings into the ratings table
+    sink.clearTable(testRatingsTable)
 
     allRatings.groupBy(l=>l(0)).foreach(l=>{
       val trainTestTuple = l._2.splitAt((l._2.size * trainFraction).toInt)
 
       // TODO can I do something generic?
       trainTestTuple._1
-        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble))
-        .toDF("userid", "itemid", "rating")
-        .select("userid", "itemid", "rating")
+        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble, l(3).toString().toLong))
+        .toDF("userid", "itemid", "rating", "timestamp")
+        .select("userid", "itemid", "rating", "timestamp")
         .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
-        .write.mode("append") // TODO we probably should remove all from the table between the estimation service runs
-        .cassandraFormat(trainRatingsTable, keySpace)
+        .write.mode("append")
+        .cassandraFormat(ratingsTable, keySpace)
         .save()
 
       trainTestTuple._2
-        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble))
-        .toDF("userid", "itemid", "rating")
-        .select("userid", "itemid", "rating")
+        .map(l => (l(0).toString().toInt, l(1).toString().toInt, l(2).toString().toDouble, l(3).toString().toLong))
+        .toDF("userid", "itemid", "rating", "timestamp")
+        .select("userid", "itemid", "rating", "timestamp")
         .withColumn("key", concat(col("userid"), lit(":"), col("itemid")))
-        .write.mode("append") // TODO we probably should remove all from the table between the estimation service runs
+        .write.mode("append")
         .cassandraFormat(testRatingsTable, keySpace)
         .save()
     })
@@ -103,17 +108,21 @@ object EstimationService extends App with Constants{
   }
 
   def estimateAccuracy(upperFraction: Double, lowerFraction: Double): Double ={
-    val testRatingsReader = CSVReader.open(String.format(testRatingsPath, subRootDir))
-    val testRatings = testRatingsReader.all()
-    testRatingsReader.close()
+
+    val testRatings = source.getRatings(testRatingsTable)
+      .select("userid", "itemid", "rating")
+      .collect()
+      .map(r => List(r(0).toString, r(1).toString, r(2).toString)).toList
 
     var allFinalPredictions: List[List[String]] = List()
-    val userIds = new DataUtil(subRootDir).getUserIdsFromLastNRatings(getNumberOfTrainRatings())
-    for(userId <- userIds){
-      val finalPredictionsReader = CSVReader.open(String.format(finalPredictionsForUserPath, subRootDir, userId.toString))
-      allFinalPredictions ++= finalPredictionsReader.all()
-      finalPredictionsReader.close()
-    }
+    source.getUserIdsForLastNSeconds(lastNSeconds)
+      .foreach(userId =>     {   // TODO actually I just need the whole table !!!
+        allFinalPredictions ++=
+          source.getPredictionsForUser(userId, hybridPredictionsTable)
+            .select("userid", "itemid", "prediction")
+            .collect()
+            .map(r => List(r(0).toString, r(1).toString, r(2).toString)).toList
+      })
 
     val testRatingsLabeled = labelAsPositiveOrNegative(testRatings, upperFraction, lowerFraction)
     val finalPredictionsLabeled = labelAsPositiveOrNegative(allFinalPredictions, upperFraction, lowerFraction)
@@ -127,12 +136,11 @@ object EstimationService extends App with Constants{
   }
 
   def labelAsPositiveOrNegative(ratings: List[List[String]], upperFraction: Double, lowerFraction: Double): List[List[_]] ={
-    // userId, itemId, label
-    val userIdInd = ratings(0).indexOf("userId")
-    val itemIdInd = ratings(0).indexOf("itemId")
-    val ratingInd = ratings(0).indexOf("rating")
+    val userIdInd = 0
+    val itemIdInd = 1
+    val ratingInd = 2
 
-    val justRatings = ratings.filter(l=>l(userIdInd)!="userId").map(l=>l(ratingInd).toDouble)
+    val justRatings = ratings.filter(l => l(userIdInd) != "userId").map(l => l(ratingInd).toDouble)
     val ratingRange = justRatings.max - justRatings.min
     val upperLimit = justRatings.min + (1.0-upperFraction)*ratingRange
     val lowerLimit = justRatings.min + lowerFraction*ratingRange
@@ -142,5 +150,4 @@ object EstimationService extends App with Constants{
 
     labeledRatings
   }
-
 }

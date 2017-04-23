@@ -10,6 +10,7 @@ class PopularItemsJob(val source: Source,
                       val config: Config)(implicit val sparkSession: SparkSession) {
 
   private val keyspace: String = config.getString("cassandra.keyspace")
+  private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val popularItemsTable: String = config.getString("cassandra.popular_items_table")
 
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
@@ -17,7 +18,7 @@ class PopularItemsJob(val source: Source,
   import spark.implicits._
 
   def run(): Unit = {
-    val ratingsDS = source.all
+    val ratingsDS = source.getRatings(ratingsTable)
 
     val allRatings = ratingsDS.collect().map(r => List(r.getInt(0), r.getInt(1), r.getDouble(2)))
 

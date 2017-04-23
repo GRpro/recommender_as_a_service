@@ -169,8 +169,8 @@ object DatasetUploader extends App with Constants with LazyLogging {
   }
 
   logger.info("Creating schema")
-  val schemaId = postSchema()
 
+  val schemaId = postSchema()
   logger.info("Uploading items corresponding to schema")
   uploadMovies(schemaId)
 

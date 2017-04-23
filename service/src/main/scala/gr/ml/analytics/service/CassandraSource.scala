@@ -28,13 +28,6 @@ class CassandraSource(val config: Config,
 
   import spark.implicits._
 
-  private val ratingsDS = spark
-    .read
-    .format("org.apache.spark.sql.cassandra")
-    .options(Map("table" -> ratingsTable, "keyspace" -> keyspace))
-    .load()
-    .select(userIdCol, itemIdCol, ratingCol)
-
   private lazy val userIDsDS = spark
     .read
     .format("org.apache.spark.sql.cassandra")
@@ -42,16 +35,16 @@ class CassandraSource(val config: Config,
     .load()
     .select(itemIdCol)
 
-  private lazy val itemIDsDS = ratingsDS
+  private lazy val itemIDsDS = getRatings(ratingsTable)
     .select(col(itemIdCol))
     .distinct()
 
   override def getPredictionsForUser(userId: Int, table: String): DataFrame = {
     spark.read
-    .format("org.apache.spark.sql.cassandra")
-    .options(Map("table" -> table, "keyspace" -> keyspace))
-    .load()
-    .select(keyCol, userIdCol, itemIdCol, predictionCol)
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> table, "keyspace" -> keyspace))
+      .load()
+      .select(keyCol, userIdCol, itemIdCol, predictionCol)
     .where(col(userIdCol) === userId)
   }
 
@@ -70,29 +63,33 @@ class CassandraSource(val config: Config,
     convertJson(json("jsonschema").asInstanceOf[String])
   }
 
-  private def getUserIdsForLastDF(seconds: Long): DataFrame = {
-    val userIdsDF = ratingsDS.filter($"timestamp" > System.currentTimeMillis / 1000 - seconds)
+  private def getUserIdsForLastDF(seconds: Int): DataFrame = {
+    val userIdsDF = getRatings(ratingsTable).filter($"timestamp" > System.currentTimeMillis / 1000 - seconds)
       .select(userIdCol).distinct()
     userIdsDF
   }
 
-  override def all: DataFrame = ratingsDS
+  override def getRatings(tableName: String): DataFrame = {
+    spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> tableName, "keyspace" -> keyspace))
+      .load()
+      .select(userIdCol, itemIdCol, ratingCol, timestampCol)
+  }
 
 
-  override def getUserIdsForLastNSeconds(seconds: Long): Set[Int] = {
+  override def getUserIdsForLastNSeconds(seconds: Int): Set[Int] = {
     val userIdsDF = getUserIdsForLastDF(seconds)
 
     val userIdsSet = userIdsDF.collect()
       .map(r => r.getInt(0))
       .toSet
     userIdsSet
-    // TODO Unhardcode!!!
-    ratingsDS.select(userIdCol).take(5).map(r => r.getInt(0)).toSet
   }
 
 
   override def getUserItemPairsToRate(userId: Int): DataFrame = {
-    val itemIdsNotToIncludeDF = ratingsDS.filter($"userid" === userId).select("itemid") // 4 secs
+    val itemIdsNotToIncludeDF = getRatings(ratingsTable).filter($"userid" === userId).select("itemid") // 4 secs
     val itemIdsNotToIncludeSet = itemIdsNotToIncludeDF.collect()
       .map(r=>r.getInt(0))
       .toSet.toList
