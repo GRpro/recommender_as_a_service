@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   * Run this class to extract movies genre features in a numeric format and
   * write to file.
   */
-object FeaturesExtractor extends Constants {
+object MovielensFeaturesExtractor extends Constants {
 
   val subRootDir = "preprocessing"
 

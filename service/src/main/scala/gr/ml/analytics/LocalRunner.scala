@@ -1,5 +1,7 @@
 package gr.ml.analytics
 
+import java.time.{Duration, Instant, LocalDateTime, Period}
+
 import com.typesafe.config.ConfigFactory
 import gr.ml.analytics.service._
 import gr.ml.analytics.service.HybridServiceRunner.mainSubDir
@@ -25,9 +27,24 @@ object LocalRunner {
       .getOrCreate
   }
 
+  def timed(metered: () => Unit): Unit = {
+    val start = Instant.now()
 
-  def main(args: Array[String]): Unit = {
+    metered.apply()
 
+    val end = Instant.now()
+
+    println(s"Start time $start")
+    println(s"End time $end")
+
+    val duration = Duration.between(start, end)
+    val s = duration.getSeconds
+
+    println(s"Elapsed time ${String.format("%s:%s:%s", (s / 3600).toString, ((s % 3600) / 60).toString, (s % 60).toString)}")
+  }
+
+
+  def run(): Unit = {
     Util.windowsWorkAround()
 
     val config = ConfigFactory.load("application.conf")
@@ -40,16 +57,16 @@ object LocalRunner {
 
     val params = paramsStorage.getParams()
 
-    // val featureExtractor = new RowFeatureExtractor
+    val featureExtractor = new RowFeatureExtractor
 
     // function to get feature ration from Redis
-    def getRatio(featureName: String): Double = {
-      val itemFeatureRationPattern = "schema.%s.item.feature.%s.ratio"
-      paramsStorage.getParam(itemFeatureRationPattern.format(schemaId, featureName))
-        .toString.toDouble
-    }
-
-    val featureExtractor = new WeightedFeatureExtractor(getRatio)
+    //    def getRatio(featureName: String): Double = {
+    //      val itemFeatureRationPattern = "schema.%s.item.feature.%s.ratio"
+    //      paramsStorage.getParam(itemFeatureRationPattern.format(schemaId, featureName))
+    //        .toString.toDouble
+    //    }
+    //
+    //    val featureExtractor = new WeightedFeatureExtractor(getRatio)
 
     val pipeline = LinearRegressionWithElasticNetBuilder.build("")
 
@@ -72,6 +89,12 @@ object LocalRunner {
       Thread.sleep(INTERVAL_MS)
 
     } while(ITERATIVE)
+  }
+
+
+  def main(args: Array[String]): Unit = {
+
+    timed(() => run())
 
   }
 }

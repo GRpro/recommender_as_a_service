@@ -87,7 +87,7 @@ class CassandraSource(val config: Config,
       .toSet
     userIdsSet
     // TODO Unhardcode!!!
-    ratingsDS.select(userIdCol).take(5).map(r => r.getInt(0)).toSet
+//    ratingsDS.select(userIdCol).take(5).map(r => r.getInt(0)).toSet
   }
 
 
