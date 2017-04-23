@@ -24,7 +24,7 @@ import scala.util.{Failure, Success}
   *
   * See https://grouplens.org/datasets/movielens
   */
-object DatasetUploader extends App with Constants with LazyLogging {
+object MovielensDatasetUploader extends App with Constants with LazyLogging {
 
   Util.loadAndUnzip()     // TODO it should perform feature generation too!
 
