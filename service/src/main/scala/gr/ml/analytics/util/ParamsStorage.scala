@@ -28,8 +28,8 @@ class RedisParamsStorage extends ParamsStorage {
     "cb_pipeline_id" -> 0,
 
     "hb_collaborative_weight" -> 0.1,
-//    "hb_last_n_seconds" -> 24 * 3600
-    "hb_last_n_seconds" -> 2100000000// a big number close to integer upper range - for estimation service purposes
+    "hb_last_n_seconds" -> 24 * 3600
+//     "hb_last_n_seconds" -> 2100000000// a big number close to integer upper range - for estimation service purposes
   ))
 
   // TODO REMOVE it should be set in redis differently:

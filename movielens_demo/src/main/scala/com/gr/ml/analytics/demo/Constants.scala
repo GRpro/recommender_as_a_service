@@ -10,7 +10,7 @@ trait Constants {
   val smallDatasetUrl: String = s"http://files.grouplens.org/datasets/movielens/$smallDatasetFileName"
 
   val datasetsDirectory: String = "data"
-  val ratingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-10-users.csv").toAbsolutePath.toString
+  val ratingsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings.csv").toAbsolutePath.toString
   val ratingsPathSmall: String = Paths.get(datasetsDirectory, "ml-latest-small", "ratings-small.csv").toAbsolutePath.toString
   val predictionsPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "predictions.csv").toAbsolutePath.toString // TODO move into predictions folder
   val moviesPath: String = Paths.get(datasetsDirectory, "ml-latest-small", "movies.csv").toAbsolutePath.toString
