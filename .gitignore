@@ -6,3 +6,4 @@
 **/*.class
 *.iml
 logs
+**/test_dataset

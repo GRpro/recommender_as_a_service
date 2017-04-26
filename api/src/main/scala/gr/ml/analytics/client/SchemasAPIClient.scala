@@ -11,14 +11,23 @@ import scala.concurrent.{Await, Future}
 
 class SchemasAPIClient(schemasBaseURI: String)(implicit val actorSystem: ActorSystem, implicit val actorMaterializer: Materializer) {
 
+  private var cache: Map[Int, String] = Map()
+
   def get(schemaId: Int): String = {
-    val future: Future[HttpResponse] = Http().singleRequest(HttpRequest(
-      method = HttpMethods.GET,
-      uri = s"$schemasBaseURI/schemas/$schemaId"
-    ))
+    cache.get(schemaId) match {
+      case Some(schema) => schema
+      case None =>
+        val future: Future[HttpResponse] = Http().singleRequest(HttpRequest(
+          method = HttpMethods.GET,
+          uri = s"$schemasBaseURI/schemas/$schemaId"
+        ))
 
-    Await.ready(future, 1.second)
-    future.value.get.get.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8)
+        Await.ready(future, 1.second)
+
+        val response = future.value.get.get
+        val schema = future.value.get.get.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8)
+        cache = cache + (schemaId -> schema)
+        schema
+    }
   }
-
 }

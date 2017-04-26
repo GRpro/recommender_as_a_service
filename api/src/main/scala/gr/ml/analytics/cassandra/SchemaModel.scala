@@ -3,6 +3,7 @@ package gr.ml.analytics.cassandra
 import com.outworkers.phantom.CassandraTable
 import com.outworkers.phantom.dsl._
 import gr.ml.analytics.domain.Schema
+import gr.ml.analytics.service.Util
 
 import scala.concurrent.Future
 
@@ -17,7 +18,7 @@ class SchemaModel extends CassandraTable[ConcreteSchemaModel, Schema] {
 
   object jsonSchema extends StringColumn(this)
 
-  override def fromRow(r: Row): Schema = Schema(schemaId(r), jsonSchema(r))
+  override def fromRow(r: Row): Schema = Schema(schemaId(r), Util.convertJson(jsonSchema(r)))
 }
 
 /**
@@ -41,7 +42,7 @@ abstract class ConcreteSchemaModel extends SchemaModel with RootConnector {
   def save(schema: Schema): Unit = {
     insert
       .value(_.schemaId, schema.schemaId)
-      .value(_.jsonSchema, schema.jsonSchema)
+      .value(_.jsonSchema, Util.schemaToString(schema.jsonSchema))
       .consistencyLevel_=(ConsistencyLevel.ONE)
       .future()
   }

@@ -2,6 +2,8 @@ package gr.ml.analytics.service
 
 import gr.ml.analytics.domain.Item
 
+import scala.concurrent.Future
+
 trait ItemService {
 
   /**
@@ -10,7 +12,7 @@ trait ItemService {
     * @param itemId item id
     * @return item entity
     */
-  def get(schemaId: Int, itemId: Int): Item
+  def get(schemaId: Int, itemId: Int): Future[Option[Item]]
 
   /**
     * Get multiple items by their ids
@@ -18,7 +20,7 @@ trait ItemService {
     * @param itemIds list of ids
     * @return list of items
     */
-  def get(schemaId: Int, itemIds: List[Int]): List[Item]
+  def get(schemaId: Int, itemIds: List[Int]): Future[List[Option[Item]]]
 
   /**
     * Stores item
@@ -26,6 +28,6 @@ trait ItemService {
     * @param item the item to be stored
     * @return the id of newly created item
     */
-  def save(schemaId: Int, item: Item): Int
+  def save(schemaId: Int, item: Item): Future[Option[Int]]
 }
 

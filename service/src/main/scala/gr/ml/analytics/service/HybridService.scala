@@ -2,18 +2,23 @@ package gr.ml.analytics.service
 
 import java.io.File
 
-import com.github.tototoshi.csv.{CSVReader, CSVWriter}
 import com.typesafe.config.{Config, ConfigFactory}
 import gr.ml.analytics.service.cf.{CFJob, CFPredictionService}
 import gr.ml.analytics.service.contentbased.{CBPredictionService, RandomForestEstimatorBuilder}
+import gr.ml.analytics.service.popular.PopularItemsJob
 import gr.ml.analytics.util._
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
-class HybridService(subRootDir: String, sparkSession: SparkSession, config: Config, source: Source, sink: Sink, paramsStorage: ParamsStorage) extends Constants{
+class HybridService(val subRootDir: String,
+                    val config: Config,
+                    val source: Source,
+                    val sink: Sink,
+                    val paramsStorage: ParamsStorage)(implicit val sparkSession: SparkSession) extends Constants{
 
   import sparkSession.implicits._
+
   val cfPredictionService = new CFPredictionService(subRootDir)
   val cbPredictionService = new CBPredictionService(subRootDir)
   val csv2svmConverter = new CSVtoSVMConverter(subRootDir)
@@ -23,15 +28,17 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
   private val hybridPredictionsTable: String = config.getString("cassandra.hybrid_predictions_table")
 
   def run(cbPipeline: Pipeline): Unit ={
-    sink.persistPopularItems()
+    val popularItemsJob = PopularItemsJob(source, config)
+    popularItemsJob.run()
 
-    while(true){
+    while(true) {
       Thread.sleep(5000) // can be increased for production
 
-      CFJob(sparkSession, config, None, None, paramsStorage.getParams()).run() // TODO add logging somehow
+
+      CFJob(config, source, sink, paramsStorage.getParams()).run() // TODO add logging somehow
 
       // CBJob:
-      val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+      val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
       val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
       for(userId <- userIds){
         Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
@@ -39,7 +46,7 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
         LoggerFactory.getLogger("progressLogger").info(subRootDir + " :: ##################### END OF ITERATION ##########################")
       }
 
-      val collaborativeWeight = paramsStorage.getParams().get("hb_collaborative_weight").get.toString.toLong
+      val collaborativeWeight = paramsStorage.getParams()("hb_collaborative_weight").toString.toLong
       combinePredictionsForLastUsers(collaborativeWeight)
     }
 
@@ -47,12 +54,12 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
 
   def prepareNecessaryFiles(): Unit ={
     val startTime = System.currentTimeMillis()
-    if(!(new File(String.format(moviesWithFeaturesPath, subRootDir)).exists()))
+    if(! new File(String.format(moviesWithFeaturesPath, subRootDir)).exists())
       new GenresFeatureEngineering(subRootDir).createAllMoviesWithFeaturesFile()
-    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
     val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
     userIds.foreach(csv2svmConverter.createSVMRatingsFileForUser)
-    if(!(new File(allMoviesSVMPath).exists()))
+    if(! new File(allMoviesSVMPath).exists())
       csv2svmConverter.createSVMFileForAllItems()
     val finishTime = System.currentTimeMillis()
 
@@ -61,7 +68,7 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
 
 //  def runOneCycle(cbPipeline: Pipeline): Unit ={
 //    Util.tryAndLog(cfPredictionService.updateModel(), subRootDir + " :: Collaborative:: Updating model")
-//    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+//    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toInt
 //    val userIds = source.getUserIdsForLastNSeconds(lastNSeconds)
 //    for(userId <- userIds){
 //      Util.tryAndLog(cbPredictionService.updateModelForUser(cbPipeline, userId), subRootDir + " :: Content-based:: Updating model for user " + userId)
@@ -76,7 +83,8 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
   }
 
   def combinePredictionsForLastUsers(collaborativeWeight: Double): Unit ={
-    val lastNSeconds = paramsStorage.getParams().get("hb_last_n_seconds").get.toString.toLong
+    val lastNSeconds = paramsStorage.getParams()("hb_last_n_seconds").toString.toInt
+    sink.clearTable(hybridPredictionsTable)
     val userIds = source.getUserIdsForLastNSeconds(lastNSeconds) // TODO not good, that we have to get it every time...
     for(userId <- userIds){
       combinePredictionsForUser(userId, collaborativeWeight)
@@ -93,9 +101,8 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
       .withColumn("hybrid_prediction", $"d1.prediction" + $"d2.prediction")
       .select($"d1.key", $"d2.userid", $"d2.itemid", $"hybrid_prediction".as("prediction"))
       .sort($"prediction".desc)
-      .limit(100) // TODO extract to config
+      .limit(1000) // TODO extract to config
 
-    // TODO we probably don't need to save it, since final predictions is enough.. check if we benefit in time if not persisting it
     sink.storePredictions(hybridPredictions, hybridPredictionsTable) // TODO should we use spark here?
 
     val finalPredictedIDs = hybridPredictions.select("itemid").collect().map(r => r.getInt(0)).toList
@@ -105,15 +112,19 @@ class HybridService(subRootDir: String, sparkSession: SparkSession, config: Conf
 
 object HybridServiceRunner extends App with Constants{
   Util.windowsWorkAround()
-  Util.loadAndUnzip(mainSubDir) // TODO new ratings will be rewritten!!
+  Util.loadAndUnzip(mainSubDir)
   //      val cbPipeline = LinearRegressionWithElasticNetBuilder.build(userId)
   val cbPipeline = RandomForestEstimatorBuilder.build(mainSubDir)
   //      val cbPipeline = GeneralizedLinearRegressionBuilder.build(userId)
-  val sparkSession = SparkUtil.sparkSession()
+
+  implicit val sparkSession = SparkUtil.sparkSession()
+
   val config = ConfigFactory.load("application.conf")
-  val source = new CassandraSource(sparkSession, config)
-  val sink = new CassandraSink(sparkSession, config)
+
+  val featureExtractor = new RowFeatureExtractor
+  val source = new CassandraSource(config, featureExtractor)
+  val sink = new CassandraSink(config)
   val paramsStorage: ParamsStorage = new RedisParamsStorage
-  val hb = new HybridService(mainSubDir, sparkSession, config, source, sink, paramsStorage)
+  val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
   hb.run(cbPipeline)
 }

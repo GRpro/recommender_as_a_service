@@ -1,14 +1,15 @@
 package gr.ml.analytics.service
+
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.config.Config
 import gr.ml.analytics.cassandra.CassandraUtil
-import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.util.parsing.json.JSON
 
-class CassandraSource(val sparkSession: SparkSession, val config: Config) extends Source {
+class CassandraSource(val config: Config,
+                      val featureExtractor: FeatureExtractor)(implicit val sparkSession: SparkSession) extends Source {
 
   private val schemaId: Int = config.getInt("items_schema_id")
 
@@ -25,16 +26,7 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
   private val predictionCol = "prediction"
   private val spark = CassandraUtil.setCassandraProperties(sparkSession, config)
 
-//  spark.conf.set("spark.sql.crossJoin.enabled", "true")
-
   import spark.implicits._
-
-  private val ratingsDS = spark
-    .read
-    .format("org.apache.spark.sql.cassandra")
-    .options(Map("table" -> ratingsTable, "keyspace" -> keyspace))
-    .load()
-    .select(userIdCol, itemIdCol, ratingCol)
 
   private lazy val userIDsDS = spark
     .read
@@ -43,16 +35,16 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
     .load()
     .select(itemIdCol)
 
-  private lazy val itemIDsDS = ratingsDS
+  private lazy val itemIDsDS = getRatings(ratingsTable)
     .select(col(itemIdCol))
     .distinct()
 
   override def getPredictionsForUser(userId: Int, table: String): DataFrame = {
     spark.read
-    .format("org.apache.spark.sql.cassandra")
-    .options(Map("table" -> table, "keyspace" -> keyspace))
-    .load()
-    .select(keyCol, userIdCol, itemIdCol, predictionCol)
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> table, "keyspace" -> keyspace))
+      .load()
+      .select(keyCol, userIdCol, itemIdCol, predictionCol)
     .where(col(userIdCol) === userId)
   }
 
@@ -71,29 +63,35 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
     convertJson(json("jsonschema").asInstanceOf[String])
   }
 
-  private def getUserIdsForLastDF(seconds: Long): DataFrame = {
-    val userIdsDF = ratingsDS.filter($"timestamp" > System.currentTimeMillis / 1000 - seconds)
+  private def getUserIdsForLastDF(seconds: Int): DataFrame = {
+    val userIdsDF = getRatings(ratingsTable).filter($"timestamp" > System.currentTimeMillis / 1000 - seconds)
       .select(userIdCol).distinct()
     userIdsDF
   }
 
-  override def all: DataFrame = ratingsDS
+  override def getRatings(tableName: String): DataFrame = {
+    spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> tableName, "keyspace" -> keyspace))
+      .load()
+      .select(userIdCol, itemIdCol, ratingCol, timestampCol)
+  }
 
 
-  override def getUserIdsForLastNSeconds(seconds: Long): Set[Int] = {
+  override def getUserIdsForLastNSeconds(seconds: Int): Set[Int] = {
     val userIdsDF = getUserIdsForLastDF(seconds)
 
     val userIdsSet = userIdsDF.collect()
       .map(r => r.getInt(0))
       .toSet
     userIdsSet
-
-    ratingsDS.select(userIdCol).take(5).map(r => r.getInt(0)).toSet
+    // TODO Unhardcode!!!
+    getRatings(ratingsTable).select(userIdCol).take(5).map(r => r.getInt(0)).toSet
   }
 
 
   override def getUserItemPairsToRate(userId: Int): DataFrame = {
-    val itemIdsNotToIncludeDF = ratingsDS.filter($"userid" === userId).select("itemid") // 4 secs
+    val itemIdsNotToIncludeDF = getRatings(ratingsTable).filter($"userid" === userId).select("itemid") // 4 secs
     val itemIdsNotToIncludeSet = itemIdsNotToIncludeDF.collect()
       .map(r=>r.getInt(0))
       .toSet.toList
@@ -106,31 +104,12 @@ class CassandraSource(val sparkSession: SparkSession, val config: Config) extend
 
   override def getAllItemsAndFeatures(): DataFrame = {
 
-    val allowedTypes = Set("double", "float")
-
-    val idColumnName = schema("id").asInstanceOf[Map[String, String]]("name")
-    val featureColumnNames = schema("features").asInstanceOf[List[Map[String, String]]]
-      .filter((colDescription: Map[String, Any]) => allowedTypes.contains(colDescription("type").asInstanceOf[String].toLowerCase))
-      .map(colDescription => colDescription("name"))
-
-
     val itemsRowDF = spark
       .read
       .format("org.apache.spark.sql.cassandra")
       .options(Map("table" -> itemsTable, "keyspace" -> keyspace))
       .load()
-      .select(idColumnName, featureColumnNames:_*)
 
-    val itemsDF = itemsRowDF.map(row => {
-      val id = row.getInt(0)
-      val featureValues = (1 until row.length).map(idx => row.getDouble(idx))
-      val featureValuesArr: Array[Double] = featureValues.toArray
-      (id, Vectors.dense(featureValuesArr))
-    }).toDF("itemid", "features")
-
-    itemsDF
-
-    // the format of libsvm
-    // see http://stackoverflow.com/questions/41416291/how-to-prepare-data-into-a-libsvm-format-from-dataframe
+    featureExtractor.convertFeatures(itemsRowDF, schema)
   }
 }

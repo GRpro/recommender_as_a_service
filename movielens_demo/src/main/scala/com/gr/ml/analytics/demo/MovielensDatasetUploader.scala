@@ -24,7 +24,7 @@ import scala.util.{Failure, Success}
   *
   * See https://grouplens.org/datasets/movielens
   */
-object DatasetUploader extends App with Constants with LazyLogging {
+object MovielensDatasetUploader extends App with Constants with LazyLogging {
 
   Util.loadAndUnzip()     // TODO it should perform feature generation too!
 
@@ -34,9 +34,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
   val config: Config = ConfigFactory.load("application.conf")
 
-  val schemasREST = config.getString("service.schemas.rest")
-  val itemsREST = config.getString("service.items.rest")
-  val ratingsREST = config.getString("service.ratings.rest")
+  val serviceREST = config.getString("service.rest")
 
 
   val featureNames = CSVReader.open(moviesWithFeaturesPath).readNext().get.drop(1)
@@ -68,7 +66,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
     val future = Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
-      uri = s"$schemasREST/schemas",
+      uri = s"$serviceREST/schemas",
       entity = HttpEntity(ContentTypes.`application/json`, schema.toString())))
 
     future.onFailure { case e => e.printStackTrace() }
@@ -108,7 +106,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
       val future = Http().singleRequest(HttpRequest(
         method = HttpMethods.POST,
-        uri = s"$itemsREST/schemas/$schemaId/items",
+        uri = s"$serviceREST/schemas/$schemaId/items",
         entity = HttpEntity(ContentTypes.`application/json`, toJson(movieList))))
 
       future.onFailure { case e => e.printStackTrace() }
@@ -143,7 +141,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
       val future = Http().singleRequest(HttpRequest(
         method = HttpMethods.POST,
-        uri = s"$ratingsREST/ratings",
+        uri = s"$serviceREST/ratings",
         entity = HttpEntity(ContentTypes.`application/json`, toJson(ratingList))))
 
       future.onFailure { case e => e.printStackTrace() }
@@ -171,8 +169,8 @@ object DatasetUploader extends App with Constants with LazyLogging {
   }
 
   logger.info("Creating schema")
-  val schemaId = postSchema()
 
+  val schemaId = postSchema()
   logger.info("Uploading items corresponding to schema")
   uploadMovies(schemaId)
 

@@ -3,8 +3,10 @@ package gr.ml.analytics.cassandra
 import java.util.UUID
 
 import com.outworkers.phantom.CassandraTable
+import com.outworkers.phantom.builder.QueryBuilder
 import com.outworkers.phantom.dsl._
 import gr.ml.analytics.domain.Rating
+import com.outworkers.phantom.dsl.ClusteringOrder
 
 import scala.concurrent.Future
 
@@ -15,7 +17,7 @@ class RatingModel extends CassandraTable[ConcreteRatingModel, Rating] {
 
   override def tableName: String = "ratings"
 
-  object id extends UUIDColumn(this) with PartitionKey
+  object key extends StringColumn(this) with PartitionKey
 
   object userId extends IntColumn(this)
 
@@ -39,19 +41,23 @@ abstract class ConcreteRatingModel extends RatingModel with RootConnector {
       .fetch
   }
 
-  def save(rating: Rating): UUID = {
-    val id = UUID.randomUUID()
-    insert   // TODO WOULD BE CONSISTENT TO SAVE WITH PRIMARY KEY IN FORM userid:itemid (LIKE WE DID FOR PREDICTIONS!!!)
-      .value(_.id, id)
+  def getAfter(userId: Int, timestamp: Long): Future[List[Rating]] = {
+    select
+      .consistencyLevel_=(ConsistencyLevel.ONE)
+      .where(_.timestamp isGt timestamp)
+      .fetch
+  }
+
+  def save(rating: Rating) = {
+    insert
+      .value(_.key, rating.userId + ":" + rating.itemId)
       .value(_.userId, rating.userId)
       .value(_.itemId, rating.itemId)
       .value(_.rating, rating.rating)
       .value(_.timestamp, rating.timestamp)
       .consistencyLevel_=(ConsistencyLevel.ONE)
       .future()
-    id
   }
-
 }
 
 
