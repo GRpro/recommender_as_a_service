@@ -82,8 +82,14 @@ lazy val api = project.in(file("api"))
       "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+      "ch.megard" %% "akka-http-cors" % "0.1.11",
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
     ),
+    // swagger support
+    libraryDependencies += "co.pragmati" %% "swagger-ui-akka-http" % "1.0.0",
+//    libraryDependencies += "io.swagger" % "swagger-jaxrs" % "1.5.13",
+    libraryDependencies += "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.9.1",
+
     libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",

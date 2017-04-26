@@ -2,58 +2,68 @@ package gr.ml.analytics.service
 
 import com.typesafe.scalalogging.LazyLogging
 import gr.ml.analytics.cassandra.InputDatabase
-import gr.ml.analytics.client.SchemasAPIClient
-import gr.ml.analytics.domain.Item
+import gr.ml.analytics.domain.{Item, Schema}
 
+import scala.concurrent.Future
 import scala.util.parsing.json.JSONObject
+import scala.concurrent.ExecutionContext.Implicits.global
 
-class ItemServiceImpl(val inputDatabase: InputDatabase, val schemasClient: SchemasAPIClient) extends ItemService with LazyLogging {
+class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with LazyLogging {
 
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemId: Int): Item = {
-    val tableName = Util.itemsTableName(schemaId)
-    val schema: Map[String, Any] = Util.schemaToMap(schemasClient.get(schemaId))
-    val (idName, idType) = Util.extractIdMetadata(schema)
-    val featureColumnsInfo: List[Map[String, String]] = Util.extractFeaturesMetadata(schema)
+  override def get(schemaId: Int, itemId: Int): Future[Option[Item]] = {
+    val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
-    // retrieve content in json format
-    val query = s"SELECT JSON * FROM ${inputDatabase.ratingModel.keySpace}.$tableName WHERE $idName = $itemId"
+    schemaFuture.map {
+      case Some(schema) =>
+        val schemaMap: Map[String, Any] = schema.jsonSchema
+        val (idName, idType) = Util.extractIdMetadata(schemaMap)
+        val featureColumnsInfo: List[Map[String, String]] = Util.extractFeaturesMetadata(schemaMap)
 
-    val res = inputDatabase.connector.session.execute(query).one()
+        // retrieve content in json format
+        val tableName = Util.itemsTableName(schemaId)
+        val query = s"SELECT JSON * FROM ${inputDatabase.ratingModel.keySpace}.$tableName WHERE $idName = $itemId"
+        val res = inputDatabase.connector.session.execute(query).one()
+        val item: Item = Util.convertJson(res.get("[json]", classOf[String]))
 
-    val json = Util.convertJson(res.get("[json]", classOf[String]))
-
-    json
+        Some(item)
+      case None => None
+    }
   }
 
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemIds: List[Int]): List[Item] = {
-    itemIds.map(itemId => get(schemaId, itemId))
+  override def get(schemaId: Int, itemIds: List[Int]): Future[List[Option[Item]]] = {
+    Future.sequence(itemIds.map(itemId => get(schemaId, itemId)))
   }
 
   /**
     * @inheritdoc
     */
-  override def save(schemaId: Int, item: Item): Int = {
-    val tableName = Util.itemsTableName(schemaId)
+  override def save(schemaId: Int, item: Item): Future[Option[Int]] = {
+    val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
-    val schema: Map[String, Any] = Util.schemaToMap(schemasClient.get(schemaId))
+    schemaFuture.map {
+      case Some(schema: Schema) =>
+        val schemaMap: Map[String, Any] = schema.jsonSchema
+        val (idName, idType) = Util.extractIdMetadata(schemaMap)
+        val featureColumnsInfo: List[Map[String, String]] = Util.extractFeaturesMetadata(schemaMap)
 
-    val (idName, idType) = Util.extractIdMetadata(schema)
-    val featureColumnsInfo: List[Map[String, String]] = Util.extractFeaturesMetadata(schema)
 
-    // TODO implement proper mechanism to escape characters which have special meaning for Cassandra
-    val json = JSONObject(item).toString().replace("'", "")
-    val query = s"INSERT INTO ${inputDatabase.ratingModel.keySpace}.$tableName JSON '$json'"
+        // TODO implement proper mechanism to escape characters which have special meaning for Cassandra
+        val json = JSONObject(item).toString().replace("'", "")
+        val tableName = Util.itemsTableName(schemaId)
+        val query = s"INSERT INTO ${inputDatabase.ratingModel.keySpace}.$tableName JSON '$json'"
+        val res = inputDatabase.connector.session.execute(query).wasApplied()
 
-    val res = inputDatabase.connector.session.execute(query).wasApplied()
+        logger.info(s"Creating item: '$query' Result: $res")
 
-    logger.info(s"Creating item: '$query' Result: $res")
-
-    item(idName).asInstanceOf[BigDecimal].toInt
+        Some(item(idName).asInstanceOf[BigDecimal].toInt)
+      case None =>
+        None
+    }
   }
 }

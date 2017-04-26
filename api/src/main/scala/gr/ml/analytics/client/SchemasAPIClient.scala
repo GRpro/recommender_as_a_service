@@ -23,6 +23,8 @@ class SchemasAPIClient(schemasBaseURI: String)(implicit val actorSystem: ActorSy
         ))
 
         Await.ready(future, 1.second)
+
+        val response = future.value.get.get
         val schema = future.value.get.get.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8)
         cache = cache + (schemaId -> schema)
         schema
