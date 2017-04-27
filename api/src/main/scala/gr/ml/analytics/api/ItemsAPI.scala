@@ -7,10 +7,15 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import gr.ml.analytics.domain.Item
-import gr.ml.analytics.domain.JsonSerDeImplicits._
+import spray.json.{JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, JsonFormat}
+
+import scala.concurrent.Future
+//import gr.ml.analytics.domain.JsonSerDeImplicits._
 import gr.ml.analytics.service.ItemService
 import io.swagger.annotations._
 import spray.json.DefaultJsonProtocol._
+import scala.concurrent.ExecutionContext.Implicits.global
+
 
 /*
 
@@ -29,23 +34,48 @@ class ItemsAPI(val itemService: ItemService) {
 
   val route: Route = postItems ~ getItem
 
-  @ApiOperation(httpMethod = "POST", value = "Add new item")
+  implicit object AnyJsonFormat extends JsonFormat[Any] {
+    def write(x: Any) = x match {
+      case n: Int => JsNumber(n)
+      case d: Double => JsNumber(d)
+      case f: Float => JsNumber(f)
+      case s: String => JsString(s)
+      case x: Seq[_] => seqFormat[Any].write(x)
+      case m: Map[String, _] => mapFormat[String, Any].write(m)
+      case b: Boolean if b == true => JsTrue
+      case b: Boolean if b == false => JsFalse
+      case x => throw new RuntimeException
+    }
+
+    def read(value: JsValue) = value match {
+      case JsNumber(n) => n.intValue()
+      case JsString(s) => s
+      case a: JsArray => listFormat[Any].read(value)
+      case o: JsObject => mapFormat[String, Any].read(value)
+      case JsTrue => true
+      case JsFalse => false
+      case x => throw new RuntimeException
+    }
+  }
+
+  @ApiOperation(httpMethod = "POST", value = "Add new items")
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "schemaId", required = true, dataType = "integer", paramType = "path", value = "Schema identifier of an item"),
-    new ApiImplicitParam(name = "body", value = "Item definition", required = true, paramType = "body")
+    new ApiImplicitParam(name = "body", value = "Items definition", required = true, paramType = "body", dataType = "java.util.Map")
   ))
   @ApiResponses(Array(
-    new ApiResponse(code = 201, message = "Item has been created"),
+    new ApiResponse(code = 201, message = "Items have been created", response = classOf[Int], responseContainer = "List"),
     new ApiResponse(code = 400, message = "Bad request"),
     new ApiResponse(code = 404, message = "Schema not found")))
   def postItems: Route =
     path("schemas" / IntNumber / "items") { schemaId =>
       post {
         entity(as[List[Item]]) { items =>
-          items.foreach { item =>
-            itemService.save(schemaId, item)
+
+          onSuccess(Future.sequence(items.map { item => itemService.save(schemaId, item) })) { idList: List[Option[Int]] =>
+            complete(StatusCodes.Created, idList.filter(_.isDefined).map(_.get))
           }
-          complete(StatusCodes.Created)
+
         }
       }
     }

@@ -45,7 +45,7 @@ class SchemasAPI(schemaService: SchemaService) {
 
   @ApiOperation(httpMethod = "POST", value = "Create schema")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "body", value = "Schema definition", required = true, paramType = "body")
+    new ApiImplicitParam(name = "body", value = "Schema definition", required = true, paramType = "body", dataType = "gr.ml.analytics.domain.Schema")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 201, message = "Schema has been created"),

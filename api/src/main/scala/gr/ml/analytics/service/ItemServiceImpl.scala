@@ -26,9 +26,14 @@ class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with
         val tableName = Util.itemsTableName(schemaId)
         val query = s"SELECT JSON * FROM ${inputDatabase.ratingModel.keySpace}.$tableName WHERE $idName = $itemId"
         val res = inputDatabase.connector.session.execute(query).one()
-        val item: Item = Util.convertJson(res.get("[json]", classOf[String]))
 
-        Some(item)
+        if (res != null) {
+          val item: Item = Util.convertJson(res.get("[json]", classOf[String]))
+          Some(item)
+        } else {
+          None
+        }
+
       case None => None
     }
   }
@@ -61,7 +66,7 @@ class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with
 
         logger.info(s"Creating item: '$query' Result: $res")
 
-        Some(item(idName).asInstanceOf[BigDecimal].toInt)
+        Some(item(idName.toLowerCase()).asInstanceOf[Integer].intValue())
       case None =>
         None
     }
