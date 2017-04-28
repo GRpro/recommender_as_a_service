@@ -10,11 +10,11 @@ import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
 import gr.ml.analytics.client.SchemasAPIClient
 import gr.ml.analytics.service._
 import akka.http.scaladsl.server.Directives._
+import ch.megard.akka.http.cors.CorsDirectives._
+import com.github.swagger.akka.SwaggerSite
+import gr.ml.analytics.api.swagger.{SwaggerDocService, SwaggerUI}
 
 import scala.io.StdIn
-
-
-
 
 
 /**
@@ -23,6 +23,12 @@ import scala.io.StdIn
 object Application extends App {
 
   implicit val system = ActorSystem("recommendation-service")
+
+  /**
+    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
+    */
+  sys.addShutdownHook(system.terminate())
+
   implicit val materializer = ActorMaterializer()
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.dispatcher
@@ -43,7 +49,7 @@ object Application extends App {
   val schemasClient: SchemasAPIClient = new SchemasAPIClient(serviceClientURI)
 
   val recommenderService: RecommenderService = new RecommenderServiceImpl(inputDatabase)
-  var itemsService: ItemService = new ItemServiceImpl(inputDatabase, schemasClient)
+  var itemsService: ItemService = new ItemServiceImpl(inputDatabase)
   val ratingsService: RatingService = new RatingServiceImpl(inputDatabase)
 
   // create apis
@@ -52,8 +58,18 @@ object Application extends App {
   val schemasApi = new SchemasAPI(schemasService)
   val ratingsApi = new RatingsAPI(ratingsService)
 
+  // enable cross origin requests
+  // enable swagger
+  val rotes = cors() (
+    recommenderApi.route ~
+      itemsApi.route ~
+      schemasApi.route ~
+      ratingsApi.route ~
+      new SwaggerDocService(serviceListenerInterface, serviceListenerPort).routes ~
+      new SwaggerSite {}.swaggerSiteRoute)
+
   val recommenderAPIBindingFuture = Http().bindAndHandle(
-    recommenderApi.route ~ itemsApi.route ~ schemasApi.route ~ ratingsApi.route,
+    rotes,
     interface = serviceListenerInterface,
     port = serviceListenerPort)
 

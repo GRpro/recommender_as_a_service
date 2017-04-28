@@ -1,20 +1,18 @@
 package gr.ml.analytics
 
+import io.swagger.annotations.{ApiModel, ApiModelProperty}
+
+import scala.annotation.meta.field
+
 package object domain {
 
+  @ApiModel(description = "An item object")
   type Item = Map[String, Any]
 
-  case class Rating(userId: Int, itemId: Int, rating: Double, timestamp: Long)
 
-  object Rating
 
-  case class Schema(schemaId: Int, jsonSchema: String)
 
-  object Schema
 
-  case class Recommendation(userId: Int, topItems: List[Int])
-
-  object Recommendation
 
   case class ClusteredItems(itemId: Int, similarItems: Set[Int])
 
