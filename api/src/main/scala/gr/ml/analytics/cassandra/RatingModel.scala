@@ -1,14 +1,16 @@
 package gr.ml.analytics.cassandra
 
-import java.util.UUID
 
 import com.outworkers.phantom.CassandraTable
-import com.outworkers.phantom.builder.QueryBuilder
 import com.outworkers.phantom.dsl._
-import gr.ml.analytics.domain.Rating
-import com.outworkers.phantom.dsl.ClusteringOrder
 
 import scala.concurrent.Future
+
+case class Rating(
+                   userId: Int,
+                   itemId: Int,
+                   rating: Double,
+                   timestamp: Long)
 
 /**
   * Cassandra representation of the Ratings table

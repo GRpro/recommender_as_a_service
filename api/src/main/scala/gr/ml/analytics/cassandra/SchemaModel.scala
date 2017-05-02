@@ -2,10 +2,13 @@ package gr.ml.analytics.cassandra
 
 import com.outworkers.phantom.CassandraTable
 import com.outworkers.phantom.dsl._
-import gr.ml.analytics.domain.Schema
 import gr.ml.analytics.service.Util
 
 import scala.concurrent.Future
+
+case class Schema(
+                   schemaId: Int,
+                   jsonSchema: Map[String, Any])
 
 /**
   * Cassandra representation of the Schemas table

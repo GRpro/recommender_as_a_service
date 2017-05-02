@@ -89,14 +89,17 @@ lazy val api = project.in(file("api"))
     libraryDependencies += "co.pragmati" %% "swagger-ui-akka-http" % "1.0.0",
 //    libraryDependencies += "io.swagger" % "swagger-jaxrs" % "1.5.13",
     libraryDependencies += "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.9.1",
-
+//    libraryDependencies += "org.specs2" %% "specs2-core" % "3.7.2" % "test",
+    libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.14.0",
     libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
-    libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
+//    libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
+    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4",
+
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test",
-    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4"
+    libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.9" % "test"
   )
   .dependsOn(common)
 

@@ -2,11 +2,10 @@ package gr.ml.analytics.cassandra
 
 import com.outworkers.phantom.CassandraTable
 import com.outworkers.phantom.dsl._
-import gr.ml.analytics.domain.ClusteredItems
 
 import scala.concurrent.Future
 
-
+case class ClusteredItems(itemId: Int, similarItems: Set[Int])
 /**
   * Cassandra representation of the Item Clusters table
   */

@@ -1,6 +1,6 @@
 package gr.ml.analytics.service
 
-import gr.ml.analytics.domain.Schema
+import gr.ml.analytics.cassandra.Schema
 
 import scala.concurrent.Future
 

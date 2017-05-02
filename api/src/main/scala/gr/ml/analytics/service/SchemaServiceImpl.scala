@@ -3,14 +3,12 @@ package gr.ml.analytics.service
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.scalalogging.LazyLogging
-import gr.ml.analytics.cassandra.InputDatabase
-import gr.ml.analytics.domain.Schema
+import gr.ml.analytics.cassandra.{CassandraStorage, Schema}
 import org.json4s.{DefaultFormats, Formats}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class SchemaServiceImpl(inputDatabase: InputDatabase) extends SchemaService with LazyLogging {
+class SchemaServiceImpl(inputDatabase: CassandraStorage) extends SchemaService with LazyLogging {
 
   private lazy val schemasModel = inputDatabase.schemasModel
 

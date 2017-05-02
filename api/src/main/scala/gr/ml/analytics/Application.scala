@@ -1,18 +1,18 @@
 package gr.ml.analytics
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.event.Logging
 import akka.http.scaladsl.Http
-import akka.stream.ActorMaterializer
-import Configuration._
-import gr.ml.analytics.api.{ItemsAPI, RatingsAPI, RecommenderAPI, SchemasAPI}
-import gr.ml.analytics.cassandra.{CassandraConnector, InputDatabase}
-import gr.ml.analytics.client.SchemasAPIClient
-import gr.ml.analytics.service._
 import akka.http.scaladsl.server.Directives._
+import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.CorsDirectives._
 import com.github.swagger.akka.SwaggerSite
-import gr.ml.analytics.api.swagger.{SwaggerDocService, SwaggerUI}
+import gr.ml.analytics.Configuration._
+import gr.ml.analytics.api._
+import gr.ml.analytics.api.swagger.SwaggerDocService
+import gr.ml.analytics.cassandra.{CassandraConnector, CassandraStorage}
+import gr.ml.analytics.online.{ItemItemRecommender, OnlineLearningActor}
+import gr.ml.analytics.service._
 
 import scala.io.StdIn
 
@@ -42,21 +42,26 @@ object Application extends App {
     Some(cassandraUsername),
     Some(cassandraPassword))
 
-  val inputDatabase = new InputDatabase(cassandraConnector.connector)
+  val database = new CassandraStorage(cassandraConnector.connector)
+
+  // online recommender
+  val onlineItemToItemCF = new ItemItemRecommender(database)
+
+  val onlineLearningActor: ActorRef = system.actorOf(Props(new OnlineLearningActor(onlineItemToItemCF)), "online_learning_actor")
 
   // create services
-  val schemasService: SchemaService = new SchemaServiceImpl(inputDatabase)
-  val schemasClient: SchemasAPIClient = new SchemasAPIClient(serviceClientURI)
-
-  val recommenderService: RecommenderService = new RecommenderServiceImpl(inputDatabase)
-  var itemsService: ItemService = new ItemServiceImpl(inputDatabase)
-  val ratingsService: RatingService = new RatingServiceImpl(inputDatabase)
+  val schemasService: SchemaService = new SchemaServiceImpl(database)
+  val recommenderService: RecommenderService = new RecommenderServiceImpl(database, onlineItemToItemCF)
+  var itemsService: ItemService = new ItemServiceImpl(database)
+  val ratingsService: RatingService = new RatingServiceImpl(database)
+  val actionService: ActionService = new ActionServiceImpl(database)
 
   // create apis
   val recommenderApi = new RecommenderAPI(recommenderService)
   val itemsApi = new ItemsAPI(itemsService)
   val schemasApi = new SchemasAPI(schemasService)
-  val ratingsApi = new RatingsAPI(ratingsService)
+  val actionsApi = new ActionsAPI(actionService)
+  val ratingsApi = new InteractionsAPI(ratingsService, actionService, onlineLearningActor)
 
   // enable cross origin requests
   // enable swagger
@@ -65,8 +70,10 @@ object Application extends App {
       itemsApi.route ~
       schemasApi.route ~
       ratingsApi.route ~
+      actionsApi.route ~
       new SwaggerDocService(serviceListenerInterface, serviceListenerPort).routes ~
-      new SwaggerSite {}.swaggerSiteRoute)
+      new SwaggerSite {}.swaggerSiteRoute
+  )
 
   val recommenderAPIBindingFuture = Http().bindAndHandle(
     rotes,

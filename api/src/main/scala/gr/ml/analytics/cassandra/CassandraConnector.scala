@@ -31,9 +31,4 @@ class CassandraConnector(hosts: List[String],
         .keySpace(keyspace)
   }
 
-  /**
-    * Create an embedded connector, testing purposes only
-    */
-  lazy val testConnector: CassandraConnection = ContactPoint.embedded.noHeartbeat().keySpace(keyspace)
-
 }

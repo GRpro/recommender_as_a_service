@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.github.swagger.akka._
 import com.github.swagger.akka.model.Info
-import gr.ml.analytics.api.{ItemsAPI, RatingsAPI, RecommenderAPI, SchemasAPI}
+import gr.ml.analytics.api._
 import io.swagger.models.ExternalDocs
 import io.swagger.models.auth.BasicAuthDefinition
 
@@ -20,9 +20,10 @@ class SwaggerDocService(val interface: String,
 
   override val apiTypes = Seq(
     ru.typeOf[ItemsAPI],
-    ru.typeOf[RatingsAPI],
+    ru.typeOf[InteractionsAPI],
     ru.typeOf[RecommenderAPI],
-    ru.typeOf[SchemasAPI]
+    ru.typeOf[SchemasAPI],
+    ru.typeOf[ActionsAPI]
   )
   override val host = s"$interface:$port"
   override val info = Info(version = "1.0")

@@ -1,19 +1,18 @@
 package gr.ml.analytics.service
 
 import com.typesafe.scalalogging.LazyLogging
-import gr.ml.analytics.cassandra.InputDatabase
-import gr.ml.analytics.domain.{Item, Schema}
+import gr.ml.analytics.cassandra.{CassandraStorage, Schema}
 
 import scala.concurrent.Future
 import scala.util.parsing.json.JSONObject
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with LazyLogging {
+class ItemServiceImpl(val inputDatabase: CassandraStorage) extends ItemService with LazyLogging {
 
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemId: Int): Future[Option[Item]] = {
+  override def get(schemaId: Int, itemId: Int): Future[Option[Map[String, Any]]] = {
     val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
     schemaFuture.map {
@@ -28,7 +27,7 @@ class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with
         val res = inputDatabase.connector.session.execute(query).one()
 
         if (res != null) {
-          val item: Item = Util.convertJson(res.get("[json]", classOf[String]))
+          val item: Map[String, Any] = Util.convertJson(res.get("[json]", classOf[String]))
           Some(item)
         } else {
           None
@@ -41,14 +40,14 @@ class ItemServiceImpl(val inputDatabase: InputDatabase) extends ItemService with
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemIds: List[Int]): Future[List[Option[Item]]] = {
+  override def get(schemaId: Int, itemIds: List[Int]): Future[List[Option[Map[String, Any]]]] = {
     Future.sequence(itemIds.map(itemId => get(schemaId, itemId)))
   }
 
   /**
     * @inheritdoc
     */
-  override def save(schemaId: Int, item: Item): Future[Option[Int]] = {
+  override def save(schemaId: Int, item: Map[String, Any]): Future[Option[Int]] = {
     val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
     schemaFuture.map {

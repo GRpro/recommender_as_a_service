@@ -11,7 +11,7 @@ object Configuration {
   val serviceListenerPort: Int = config.getInt("service.listener.port")
   val serviceClientURI: String = config.getString("service.rest")
 
-  val cassandraHosts: List[String] = config.getStringList("cassandra.host").toList
+  val cassandraHosts: List[String] = config.getStringList("cassandra.hosts").toList
   val cassandraKeyspace: String = config.getString("cassandra.keyspace")
   val cassandraUsername: String = config.getString("cassandra.username")
   val cassandraPassword: String = config.getString("cassandra.password")
