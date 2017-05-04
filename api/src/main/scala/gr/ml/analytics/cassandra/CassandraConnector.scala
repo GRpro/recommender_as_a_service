@@ -1,6 +1,6 @@
 package gr.ml.analytics.cassandra
 
-import com.outworkers.phantom.connectors.{CassandraConnection, ContactPoint, ContactPoints}
+import com.outworkers.phantom.connectors.{CassandraConnection, ContactPoints}
 
 object CassandraConnector {
 

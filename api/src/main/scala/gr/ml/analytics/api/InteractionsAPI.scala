@@ -56,6 +56,7 @@ class InteractionsAPI(val ratingService: RatingService, val actionService: Actio
               actionService.getByName(interaction.action).map(actionOption => (interaction, actionOption))))) {
             case list: List[(InteractionView, Option[Action])] =>
 
+              // action must exist for every interaction in a batch
               if (list.forall(_._2.isDefined)) {
 
                 list.foreach(element => {
