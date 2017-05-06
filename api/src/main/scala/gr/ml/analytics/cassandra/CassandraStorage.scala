@@ -24,7 +24,7 @@ class CassandraStorage(override val connector: KeySpaceDef) extends Database[Cas
   object similaritiesIndex extends SimilaritiesIndex with connector.Connector
 
   try {
-    Await.ready(createAsync(), 10.seconds)
+    Await.ready(createAsync(), 20.seconds)
   } catch {
     case e: Throwable =>
       //ignore

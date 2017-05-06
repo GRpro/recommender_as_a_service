@@ -6,13 +6,13 @@ import scala.concurrent.Future
 
 case class User(
                  id: String,
-                 items: Map[String, Int]
+                 items: Map[String, Double]
                )
 
 class UsersTable extends CassandraTable[Users, User] {
 
   object id extends StringColumn(this) with PartitionKey
-  object items extends MapColumn[String, Int](this)
+  object items extends MapColumn[String, Double](this)
   override def fromRow(row: Row): User = {
     User(
       id(row),

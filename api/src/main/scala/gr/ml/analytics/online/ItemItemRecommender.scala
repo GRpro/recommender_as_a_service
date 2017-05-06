@@ -5,13 +5,14 @@ import gr.ml.analytics.cassandra.CassandraStorage
 import gr.ml.analytics.online.cassandra.{Similarity, SimilarityIndex, User}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 import scala.math.{Ordering, min, sqrt}
 import scala.util.{Failure, Success}
 
 class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
 
-  def learn(event: Interaction, weight: Int): Unit = {
+  def learn(event: Interaction, weight: Double): Unit = {
     val userId = event.userId
     val itemId = event.itemId
 
@@ -19,25 +20,26 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
 
     user.onComplete {
       case Success(Some(u)) =>
-        val currentWeight = u.items.getOrElse(itemId, 0)
-        if (currentWeight >= weight) ()
-        else {
+        val currentWeight: Double = u.items.getOrElse(itemId, 0)
+        if (currentWeight < weight) {
           storage.users.updateUser(User(u.id, u.items + (itemId -> weight)))
           recalculateSimilarity(u, itemId, currentWeight, weight)
         }
 
-      case Success(None) => saveNewUser(userId, itemId, weight)
+      case Success(None) =>
+        val f = saveNewUser(userId, itemId, weight)
+        Await.ready(f, 3.seconds)
 
       case Failure(message) => logger.warn(s"No user with id $userId. $message")
     }
 
   }
 
-  private def recalculateSimilarity(user: User, itemId: String, currentWeight: Int, newWeight: Int): Unit = {
+  private def recalculateSimilarity(user: User, itemId: String, currentWeight: Double, newWeight: Double): Unit = {
     println("RECALCULATING SIMILARITY")
     val currentItemCount = storage.itemCounts.getById(itemId)
 
-    def callback(currentItemCount: Long): Unit = {
+    def callback(currentItemCount: Double): Unit = {
       val itemCountDelta = newWeight - currentWeight
       updateItemCount(itemId, itemCountDelta)
       val newItemCount = currentItemCount + itemCountDelta
@@ -53,12 +55,13 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
     }
   }
 
-  private def updateItemCount(itemId: String, deltaWeight: Int): Unit = {
+
+  private def updateItemCount(itemId: String, deltaWeight: Double): Future[_] = {
     storage.itemCounts.incrementCount(itemId, deltaWeight)
   }
 
-  private def updatePair(eventItemId: String, currentItemWeight: Int, newItemWeight: Int,
-                 newItemCount: Long, anotherItem: (String, Int)): Unit = {
+  private def updatePair(eventItemId: String, currentItemWeight: Double, newItemWeight: Double,
+                 newItemCount: Double, anotherItem: (String, Double)): Unit = {
     val anotherItemId = anotherItem._1
     val anotherItemWeight = anotherItem._2
     updatePairCount(eventItemId, currentItemWeight, newItemWeight, newItemCount, anotherItemId, anotherItemWeight)
@@ -67,8 +70,8 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
   private def getPairId(firstItemId: String, secondItemId: String): String =
     Ordering[String].min(firstItemId, secondItemId) + "_" + Ordering[String].max(firstItemId, secondItemId)
 
-  private def updatePairCount(eventItemId: String, currentItemWeight: Int, newItemWeight: Int,
-                      newItemCount: Long, anotherItemId: String, anotherItemWeight: Int): Unit = {
+  private def updatePairCount(eventItemId: String, currentItemWeight: Double, newItemWeight: Double,
+                      newItemCount: Double, anotherItemId: String, anotherItemWeight: Double): Unit = {
 
     val deltaCoRating = {
       if (currentItemWeight == 0) min(newItemWeight, anotherItemWeight)
@@ -84,7 +87,7 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
     val pairId = getPairId(eventItemId, anotherItemId)
     val currentPairCount = storage.pairCounts.getById(pairId)
 
-    def callback(initCount: Long): Unit = {
+    def callback(initCount: Double): Unit = {
       if (deltaCoRating != 0) {
         storage.pairCounts.incrementCount(pairId, deltaCoRating)
         updateSimilarity(eventItemId, newItemCount, anotherItemId, initCount + deltaCoRating)
@@ -100,7 +103,7 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
   }
 
 
-  private def updateSimilarity(firstItem: String, newItemCount: Long, secondItem: String, pairCount: Long): Unit = {
+  private def updateSimilarity(firstItem: String, newItemCount: Double, secondItem: String, pairCount: Double): Unit = {
     val secondItemCount = storage.itemCounts.getById(secondItem)
     println("PAIRCOUNT: " + pairCount + ", NEWITEMCOUNT: " + newItemCount)
     for {
@@ -130,21 +133,21 @@ class ItemItemRecommender(storage: CassandraStorage) extends LazyLogging {
     }
   }
 
-  private def saveNewUser(userId: String, itemId: String, weight: Int) = {
+  private def saveNewUser(userId: String, itemId: String, weight: Double): Future[_] = {
     println("SAVING NEW USER")
-    storage.users.store(User(userId, Map(itemId -> weight)))
-    updateItemCount(itemId, weight)
+    val f1 = storage.users.store(User(userId, Map(itemId -> weight)))
+    val f2 = updateItemCount(itemId, weight)
+    Future.sequence(Seq(f1, f2))
   }
 
   def getSimilarItems(itemId: String, limit: Int = 10): Future[Seq[Similarity]] = {
     val similarities = storage.similarities.getById(itemId, limit)
     similarities.map(simList => Similarity(itemId, itemId, 1) +: simList)
-    //    similarities.map(simList => (Similarity(itemId, itemId, 1) +: simList).map(sim => Map("item" -> sim.anotherItemId, "title" -> moviesNames(sim.anotherItemId), "score" -> sim.similarity)))
   }
 
   def getRecommendations(userId: String, limit: Int = 10): Future[Seq[(String, Double)]] = {
 
-    type UserItem = (String, Int)
+    type UserItem = (String, Double)
 
     def getUserItems(user: Option[User]): Seq[UserItem] = user match {
       case Some(u) => u.items.toList

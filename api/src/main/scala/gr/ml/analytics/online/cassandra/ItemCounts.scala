@@ -2,19 +2,19 @@ package gr.ml.analytics.online.cassandra
 
 import com.outworkers.phantom.dsl._
 
-import scala.concurrent.Future
-
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 
 case class ItemCount (
                      itemId: String,
-                     count: Long
+                     count: Double
                      )
 
 
 class ItemCountsTable extends CassandraTable[ItemCounts, ItemCount] {
 
   object itemId extends StringColumn(this) with PartitionKey
-  object count extends CounterColumn(this)
+  object count extends DoubleColumn(this)
 
   override def fromRow(row: Row): ItemCount = {
     ItemCount(
@@ -36,8 +36,18 @@ abstract class ItemCounts extends ItemCountsTable with RootConnector {
     select.where(_.itemId eqs id).one()
   }
 
-  def incrementCount(itemId: String, deltaWeight: Int): Future[ResultSet] = {
-    update.where(_.itemId eqs itemId).modify(_.count += deltaWeight).future()
+  def setCount(itemId: String, count: Double): Future[ResultSet] = {
+    update.where(_.itemId eqs itemId).modify(_.count setTo count).future()
+  }
+
+  def incrementCount(itemId: String, deltaWeight: Double): Future[_] = {
+    val f = getById(itemId)
+    f.onSuccess {
+      case Some(itemCount) =>
+        update.where(_.itemId eqs itemId).modify(_.count setTo (itemCount.count + deltaWeight)).future()
+      case None => store(ItemCount(itemId, deltaWeight))
+    }
+    f
   }
 
 }

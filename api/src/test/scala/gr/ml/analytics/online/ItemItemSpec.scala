@@ -38,12 +38,11 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
   def beforeAll(): Unit = {
 
     val weightsMap = Map(
-      "display" -> 0,
-      "hover" -> 1,
-      "click" -> 2,
-      "like" -> 3,
-      "share" -> 4,
-      "buy" -> 5
+      "hover" -> 1.0,
+      "click" -> 2.0,
+      "like" -> 3.0,
+      "share" -> 4.0,
+      "buy" -> 5.0
     )
 
 
@@ -75,7 +74,6 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
   def afterAll(): Unit = {
     Await.ready(testDb.truncateAsync(), 10.seconds)
     EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-    EmbeddedCassandraServerHelper.stopEmbeddedCassandra()
   }
 
 
