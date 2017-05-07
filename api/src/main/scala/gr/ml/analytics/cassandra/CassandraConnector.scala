@@ -1,5 +1,6 @@
 package gr.ml.analytics.cassandra
 
+import com.datastax.driver.core.{PoolingOptions, SocketOptions}
 import com.outworkers.phantom.connectors.{CassandraConnection, ContactPoints}
 
 object CassandraConnector {
@@ -24,7 +25,16 @@ class CassandraConnector(hosts: List[String],
     val connector = ContactPoints(hosts)
     if (username.isDefined && password.isDefined)
       connector
-        .withClusterBuilder(_.withCredentials(username.get, password.get))
+        .withClusterBuilder(
+          _.withCredentials(username.get, password.get)
+            .withSocketOptions(
+              new SocketOptions()
+                .setReadTimeoutMillis(5000)
+                .setConnectTimeoutMillis(20000))
+            .withPoolingOptions(
+              new PoolingOptions()
+                .setMaxQueueSize(50000)
+                .setPoolTimeoutMillis(20000)))
         .keySpace(keyspace)
     else
       connector

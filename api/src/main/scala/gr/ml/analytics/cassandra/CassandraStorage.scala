@@ -3,7 +3,6 @@ package gr.ml.analytics.cassandra
 import com.outworkers.phantom.database.Database
 import com.outworkers.phantom.dsl.KeySpaceDef
 import com.typesafe.scalalogging.LazyLogging
-import gr.ml.analytics.online.cassandra._
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,12 +15,6 @@ class CassandraStorage(override val connector: KeySpaceDef) extends Database[Cas
   object schemasModel extends ConcreteSchemaModel with connector.Connector
   object clusteredItemsModel extends ConcreteClusteredItemsModel with connector.Connector
   object actionsModel extends Actions with connector.Connector
-
-  object users extends Users with connector.Connector
-  object itemCounts extends ItemCounts with connector.Connector
-  object pairCounts extends PairCounts with connector.Connector
-  object similarities extends Similarities with connector.Connector
-  object similaritiesIndex extends SimilaritiesIndex with connector.Connector
 
   try {
     Await.ready(createAsync(), 20.seconds)

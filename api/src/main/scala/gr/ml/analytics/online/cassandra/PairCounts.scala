@@ -2,8 +2,7 @@ package gr.ml.analytics.online.cassandra
 
 import com.outworkers.phantom.dsl._
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
+import scala.concurrent.Future
 
 case class PairCount (
                        pairId: String,
@@ -12,6 +11,8 @@ case class PairCount (
 
 
 class PairCountsTable extends CassandraTable[PairCounts, PairCount] {
+
+  override def tableName: String = "pair_counts_table"
 
   object pairId extends StringColumn(this) with PartitionKey
   object count extends DoubleColumn(this)
@@ -37,13 +38,11 @@ abstract class PairCounts extends PairCountsTable with RootConnector {
   }
 
   def incrementCount(pairId: String, deltaWeight: Double): Future[_] = {
-    val f = getById(pairId)
-    f.onSuccess {
+    getById(pairId).flatMap {
       case Some(pairCount) =>
         update.where(_.pairId eqs pairId).modify(_.count setTo (deltaWeight + pairCount.count)).future()
       case None => store(PairCount(pairId, deltaWeight))
     }
-    f
   }
 
 }

@@ -12,6 +12,8 @@ case class SimilarityIndex (
 
 class SimilaritiesIndexTable extends CassandraTable[SimilaritiesIndex, SimilarityIndex] {
 
+  override def tableName: String = "similarity_index_table"
+
   object pairId extends StringColumn(this) with PartitionKey
   object similarity extends DoubleColumn(this)
 

@@ -11,6 +11,7 @@ import gr.ml.analytics.Configuration._
 import gr.ml.analytics.api._
 import gr.ml.analytics.api.swagger.SwaggerDocService
 import gr.ml.analytics.cassandra.{CassandraConnector, CassandraStorage}
+import gr.ml.analytics.online.cassandra.OnlineCassandraStorage
 import gr.ml.analytics.online.{ItemItemRecommender, OnlineLearningActor}
 import gr.ml.analytics.service._
 
@@ -44,8 +45,15 @@ object Application extends App {
 
   val database = new CassandraStorage(cassandraConnector.connector)
 
+//  def onlineCassandraConnector = CassandraConnector(
+//    cassandraHosts,
+//    cassandraKeyspace,
+//    Some(cassandraUsername),
+//    Some(cassandraPassword))
+  val onlineDatabase = new OnlineCassandraStorage(cassandraConnector.connector)
+
   // online recommender
-  val onlineItemToItemCF = new ItemItemRecommender(database)
+  val onlineItemToItemCF = new ItemItemRecommender(onlineDatabase)
 
   val onlineLearningActor: ActorRef = system.actorOf(Props(new OnlineLearningActor(onlineItemToItemCF)), "online_learning_actor")
 

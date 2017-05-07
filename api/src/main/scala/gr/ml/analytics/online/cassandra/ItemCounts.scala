@@ -13,6 +13,8 @@ case class ItemCount (
 
 class ItemCountsTable extends CassandraTable[ItemCounts, ItemCount] {
 
+  override def tableName: String = "item_counts_table"
+
   object itemId extends StringColumn(this) with PartitionKey
   object count extends DoubleColumn(this)
 
@@ -41,13 +43,11 @@ abstract class ItemCounts extends ItemCountsTable with RootConnector {
   }
 
   def incrementCount(itemId: String, deltaWeight: Double): Future[_] = {
-    val f = getById(itemId)
-    f.onSuccess {
+    getById(itemId).flatMap {
       case Some(itemCount) =>
         update.where(_.itemId eqs itemId).modify(_.count setTo (itemCount.count + deltaWeight)).future()
       case None => store(ItemCount(itemId, deltaWeight))
     }
-    f
   }
 
 }

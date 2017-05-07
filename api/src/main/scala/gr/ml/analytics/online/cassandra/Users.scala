@@ -11,6 +11,8 @@ case class User(
 
 class UsersTable extends CassandraTable[Users, User] {
 
+  override def tableName: String = "users_table"
+
   object id extends StringColumn(this) with PartitionKey
   object items extends MapColumn[String, Double](this)
   override def fromRow(row: Row): User = {
@@ -34,6 +36,8 @@ abstract class Users extends UsersTable with RootConnector {
   }
 
   def getById(id: String): Future[Option[User]] = {
-    select.where(_.id eqs id).one()
+    select
+      .consistencyLevel_=(ConsistencyLevel.ALL)
+      .where(_.id eqs id).one()
   }
 }

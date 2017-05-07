@@ -13,6 +13,8 @@ case class Similarity (
 
 class SimilaritiesTable extends CassandraTable[Similarities, Similarity] {
 
+  override def tableName: String = "similarities_table"
+
   object itemId extends StringColumn(this) with PartitionKey
   object similarity extends DoubleColumn(this) with ClusteringOrder with Descending
   object anotherItemId extends StringColumn(this) with ClusteringOrder with Ascending

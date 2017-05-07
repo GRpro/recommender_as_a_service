@@ -23,8 +23,9 @@ class RecommenderServiceImpl(inputDatabase: CassandraStorage, itemItemRecommende
       case None => throw new RuntimeException()
     } recoverWith {
       case e: RuntimeException =>
-        itemItemRecommender.getRecommendations(userId.toString, n)
+        val res = itemItemRecommender.getRecommendations(userId.toString, n)
           .map(seq => seq.map(pair => pair._1.toInt).toList)
+        res
     }
   }
 }
