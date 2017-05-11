@@ -10,8 +10,7 @@ import io.swagger.models.auth.BasicAuthDefinition
 
 import scala.reflect.runtime.{universe => ru}
 
-class SwaggerDocService(val interface: String,
-                        val port: Int)
+class SwaggerDocService(val apiHostPort: String)
                        (implicit val system: ActorSystem,
                         implicit val actorMaterializer: ActorMaterializer) extends SwaggerHttpService with HasActorSystem {
 
@@ -25,7 +24,7 @@ class SwaggerDocService(val interface: String,
     ru.typeOf[SchemasAPI],
     ru.typeOf[ActionsAPI]
   )
-  override val host = s"$interface:$port"
+  override val host = apiHostPort
   override val info = Info(version = "1.0")
   override val externalDocs = Some(new ExternalDocs("Core Docs", "http://acme.com/docs"))
   override val securitySchemeDefinitions = Map("basicAuth" -> new BasicAuthDefinition())

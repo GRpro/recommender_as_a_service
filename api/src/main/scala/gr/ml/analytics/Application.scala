@@ -79,7 +79,7 @@ object Application extends App {
       schemasApi.route ~
       ratingsApi.route ~
       actionsApi.route ~
-      new SwaggerDocService(serviceListenerInterface, serviceListenerPort).routes ~
+      new SwaggerDocService(s"$swaggerRestHost:$swaggerRestPort").routes ~
       new SwaggerSite {}.swaggerSiteRoute
   )
 
