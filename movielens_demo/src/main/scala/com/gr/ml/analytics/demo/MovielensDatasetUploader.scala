@@ -114,13 +114,15 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
     }
 
     // every request will contain 1000 movies
-    val groupedMovies: List[List[JSONObject]] = allItems.grouped(1000).toList
+    val groupedMovies: List[List[JSONObject]] = allItems.grouped(500).toList
 
     groupedMovies.foreach(movies => {
       val future = postItem(movies)
       Await.ready(future, 30.seconds)
       println(future.value.get)
+      Thread.sleep(2000)
     })
+
   }
 
   case class Rating(userId: Int, itemId: Int, rating: Double, timestamp: Long)
@@ -158,13 +160,16 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
     }).toList
 
     // every request will contain 1000 ratings
-    val groupedMovies: List[List[Rating]] = allRatings.grouped(1000).toList
+    val groupedMovies: List[List[Rating]] = allRatings.grouped(500).toList
 
     groupedMovies.foreach(ratings => {
       val future = postRating(ratings)
       Await.ready(future, 30.seconds)
       println(future.value.get)
+      Thread.sleep(2000)
     })
+
+
 
   }
 
