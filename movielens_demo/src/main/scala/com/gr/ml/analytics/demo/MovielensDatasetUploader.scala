@@ -135,8 +135,8 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
         JSONArray(ratingList.map(rating => JSONObject(Map(
           "userId" -> rating.userId,
           "itemId" -> rating.itemId,
-          "rating" -> rating.rating,
-          "timestamp" -> rating.timestamp)))).toString()
+          "rating" -> rating.rating/*,
+          "timestamp" -> rating.timestamp*/)))).toString()
       }
 
       val future = Http().singleRequest(HttpRequest(

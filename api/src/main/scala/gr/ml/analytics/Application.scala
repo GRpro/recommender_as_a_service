@@ -44,22 +44,21 @@ object Application extends App {
     Some(cassandraPassword))
 
   val database = new CassandraStorage(cassandraConnector.connector)
-
-//  def onlineCassandraConnector = CassandraConnector(
-//    cassandraHosts,
-//    cassandraKeyspace,
-//    Some(cassandraUsername),
-//    Some(cassandraPassword))
   val onlineDatabase = new OnlineCassandraStorage(cassandraConnector.connector)
 
-  // online recommender
-  val onlineItemToItemCF = new ItemItemRecommender(onlineDatabase)
+  var onlineLearnerOption: Option[ItemItemRecommender] = None
+  var onlineLearnerActorOption: Option[ActorRef] = None
 
-  val onlineLearningActor: ActorRef = system.actorOf(Props(new OnlineLearningActor(onlineItemToItemCF)), "online_learning_actor")
+  if (onlineLearningEnable) {
+    // online recommender
+    onlineLearnerOption = Some(new ItemItemRecommender(onlineDatabase))
+    onlineLearnerActorOption = Some(
+      system.actorOf(Props(new OnlineLearningActor(onlineLearnerOption.get)), "online_learning_actor"))
+  }
 
   // create services
   val schemasService: SchemaService = new SchemaServiceImpl(database)
-  val recommenderService: RecommenderService = new RecommenderServiceImpl(database, onlineItemToItemCF)
+  val recommenderService: RecommenderService = new RecommenderServiceImpl(database, onlineLearnerOption)
   var itemsService: ItemService = new ItemServiceImpl(database)
   val ratingsService: RatingService = new RatingServiceImpl(database)
   val actionService: ActionService = new ActionServiceImpl(database)
@@ -69,7 +68,7 @@ object Application extends App {
   val itemsApi = new ItemsAPI(itemsService)
   val schemasApi = new SchemasAPI(schemasService)
   val actionsApi = new ActionsAPI(actionService)
-  val ratingsApi = new InteractionsAPI(ratingsService, actionService, onlineLearningActor)
+  val ratingsApi = new InteractionsAPI(ratingsService, actionService, onlineLearnerActorOption)
 
   // enable cross origin requests
   // enable swagger

@@ -33,7 +33,7 @@ class CassandraConnector(hosts: List[String],
                 .setConnectTimeoutMillis(20000))
             .withPoolingOptions(
               new PoolingOptions()
-                .setMaxQueueSize(50000)
+                .setMaxQueueSize(100000)
                 .setPoolTimeoutMillis(20000)))
         .keySpace(keyspace)
     else

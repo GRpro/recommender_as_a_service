@@ -17,7 +17,7 @@ import scala.concurrent.Future
 
 @Api(value = "Ratings", produces = "application/json", consumes = "application/json")
 @Path("/ratings")
-class InteractionsAPI(val ratingService: RatingService, val actionService: ActionService, onlineModelActor: ActorRef) {
+class InteractionsAPI(val ratingService: RatingService, val actionService: ActionService, onlineModelActorOption: Option[ActorRef]) {
 
   val route: Route = postInteraction
 
@@ -80,7 +80,9 @@ class InteractionsAPI(val ratingService: RatingService, val actionService: Actio
                     timestamp)
 
                   // online learning
-                  onlineModelActor ! interaction
+                  if (onlineModelActorOption.isDefined) {
+                    onlineModelActorOption.get ! interaction
+                  }
 
                   // batch learning
                   ratingService.save(userId, itemId, weight, timestamp)

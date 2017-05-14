@@ -7,7 +7,7 @@ import gr.ml.analytics.online.ItemItemRecommender
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class RecommenderServiceImpl(inputDatabase: CassandraStorage, itemItemRecommender: ItemItemRecommender) extends RecommenderService with LazyLogging {
+class RecommenderServiceImpl(inputDatabase: CassandraStorage, itemItemRecommenderOption: Option[ItemItemRecommender]) extends RecommenderService with LazyLogging {
 
   private lazy val recommendationModel = inputDatabase.recommendationsModel
 
@@ -23,9 +23,15 @@ class RecommenderServiceImpl(inputDatabase: CassandraStorage, itemItemRecommende
       case None => throw new RuntimeException()
     } recoverWith {
       case e: RuntimeException =>
-        val res = itemItemRecommender.getRecommendations(userId.toString, n)
-          .map(seq => seq.map(pair => pair._1.toInt).toList)
-        res
+        itemItemRecommenderOption match {
+          case Some(recommender) =>
+            val res = recommender.getRecommendations(userId.toString, n)
+              .map(seq => seq.map(pair => pair._1.toInt).toList)
+            res
+          case None =>
+            logger.info(s"No recommendations for user $userId")
+            Future(List())
+        }
     }
   }
 }

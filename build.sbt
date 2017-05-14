@@ -70,7 +70,9 @@ lazy val api = project.in(file("api"))
     description :=
       """
         |REST API for recommender as a service software
-      """.stripMargin
+      """.stripMargin,
+    mainClass in assembly := Some("gr.ml.analytics.Application"),
+    assemblyJarName in assembly := "api.jar"
   )
   .settings(
 
@@ -114,7 +116,9 @@ lazy val service = project.in(file("service"))
     description :=
       """
         |Recommender service where all magic happens
-      """.stripMargin
+      """.stripMargin,
+    mainClass in assembly := Some("gr.ml.analytics.LocalRunner"),
+    assemblyJarName in assembly := "batch.jar"
   )
   .settings(
     resolvers ++= Seq(

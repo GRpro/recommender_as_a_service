@@ -14,7 +14,8 @@ class CFJob(val config: Config,
             val sink: Sink,
             val params: Map[String, Any])(implicit val sparkSession: SparkSession) {
 
-  private val lastNSeconds = params.get("hb_last_n_seconds").get.toString.toInt
+  // load lazily
+  private def lastNSeconds = params("hb_last_n_seconds").toString.toInt
   private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val cfPredictionsTable: String = config.getString("cassandra.cf_predictions_table")
 

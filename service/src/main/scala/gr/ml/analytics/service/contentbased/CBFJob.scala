@@ -12,7 +12,7 @@ class CBFJob(val config: Config,
              val params: Map[String, Any],
              val pipeline: Pipeline)(implicit val sparkSession: SparkSession) {
 
-  private val lastNSeconds = params.get("hb_last_n_seconds").get.toString.toInt
+  private def lastNSeconds = params("hb_last_n_seconds").toString.toInt
   private val ratingsTable: String = config.getString("cassandra.ratings_table")
   private val cbPredictionsTable: String = config.getString("cassandra.cb_predictions_table")
 
