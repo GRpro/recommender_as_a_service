@@ -18,8 +18,8 @@ import org.apache.spark.sql.SparkSession
   */
 object LocalRunner {
 
-  val ITERATIVE = false
-  val INTERVAL_MS = 5000
+  val ITERATIVE = true
+  val INTERVAL_MS = 1000 * 3600  // every hour
 
   def getSparkSession: SparkSession = {
     SparkSession.builder()
@@ -76,20 +76,23 @@ object LocalRunner {
 
     val cfJob = CFJob(config, source, sink, params)
     val cbfJob = CBFJob(config, source, sink, pipeline, params)
-    val popularItemsJob = PopularItemsJob(source, config)
+//    val popularItemsJob = PopularItemsJob(source, config)
 //    val clusteringJob = ItemClusteringJob(source, sink, config)
 
     val hb = new HybridService(mainSubDir, config, source, sink, paramsStorage)
+
+    var counter = 0
 
     do {
 
       cfJob.run()
       cbfJob.run()
-      popularItemsJob.run()
+//      popularItemsJob.run()
       hb.combinePredictionsForLastUsers(0.1)
 //      clusteringJob.run()
 
-
+      counter += 1
+      println(s"finished $counter iteration. Sleeping. . .")
       Thread.sleep(INTERVAL_MS)
 
     } while(ITERATIVE)
