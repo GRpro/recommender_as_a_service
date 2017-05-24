@@ -64,10 +64,10 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
       Interaction("u5", "i4", weightsMap("buy"), System.currentTimeMillis / 1000) ::
       Nil
 
-    for (event <- events) {
-      Await.ready(recommender.learn(event), 5.seconds)
-    }
-
+//    for (event <- events) {
+//      Await.ready(recommender.learn(event), 5.seconds)
+//    }
+    recommender.learn(events)
   }
 
   def afterAll(): Unit = {
