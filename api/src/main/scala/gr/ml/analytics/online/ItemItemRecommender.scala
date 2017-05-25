@@ -15,7 +15,7 @@ class ItemItemRecommender(storage: OnlineCassandraStorage) extends LazyLogging {
 
     val futures = events.groupBy(event => event.userId).toList.sortBy(_._1).map(tuple => {
       val userId = tuple._1
-      var newInteractions = tuple._2
+      val newInteractions = tuple._2
 
       val f = storage.users.getById(userId).flatMap {
         case Some(u) =>
@@ -58,7 +58,8 @@ class ItemItemRecommender(storage: OnlineCassandraStorage) extends LazyLogging {
 
           val recalculateSimilarityFutures = newInteractions.tail.map(interaction => {
             val f = recalculateSimilarity(User(userId, userItems), interaction.itemId, 0.0, interaction.weight)
-            Await.ready(f, 1.second)
+            // TODO it seems we can comment this await
+//            Await.ready(f, 1.second)
             userItems = userItems + (interaction.itemId -> interaction.weight)
             f
           })
