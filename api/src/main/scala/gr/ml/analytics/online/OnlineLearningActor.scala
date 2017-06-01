@@ -15,6 +15,10 @@ class OnlineLearningActor(val itemItemRecommender: ItemItemRecommender) extends 
       Await.ready(itemItemRecommender.learn(interaction), 10.seconds)
 
       logger.info(s"Received interaction $interaction")
+
+    case interactions: List[Interaction] =>
+      itemItemRecommender.learn(interactions)
+
     case _ =>
       throw new RuntimeException("Unknown message")
   }

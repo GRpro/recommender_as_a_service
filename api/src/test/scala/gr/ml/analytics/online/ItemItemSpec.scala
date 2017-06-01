@@ -18,12 +18,12 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
 
   type EE = ExecutionEnv
 
-  EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, 20000L)
+//  EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, 20000L)
+//
+//  val port = EmbeddedCassandraServerHelper.getNativeTransportPort
+//  val host = EmbeddedCassandraServerHelper.getHost
 
-  val port = EmbeddedCassandraServerHelper.getNativeTransportPort
-  val host = EmbeddedCassandraServerHelper.getHost
-
-  lazy val connector: CassandraConnection = ContactPoints(Seq(host), port).keySpace("cassandra_test")
+  lazy val connector: CassandraConnection = ContactPoints(Seq("localhost"), 9042).keySpace("cassandra_test")
 
   object TestDb extends OnlineCassandraStorage(connector)
 
@@ -46,33 +46,52 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
     )
 
 
+    /*
 
-    val events =
-      Interaction("u1", "i1", weightsMap("buy"), System.currentTimeMillis / 1000) ::
-      Interaction("u1", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
-      Interaction("u1", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
-      Interaction("u2", "i2", weightsMap("share"), System.currentTimeMillis / 1000) ::
-      Interaction("u2", "i3", weightsMap("like"), System.currentTimeMillis / 1000) ::
-      Interaction("u2", "i5", weightsMap("hover"), System.currentTimeMillis / 1000) ::
-      Interaction("u3", "i1", weightsMap("click"), System.currentTimeMillis / 1000) ::
-      Interaction("u3", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
-      Interaction("u4", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
-      Interaction("u4", "i3", weightsMap("buy"), System.currentTimeMillis / 1000) ::
-      Interaction("u4", "i5", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        val events =
       Interaction("u5", "i1", weightsMap("share"), System.currentTimeMillis / 1000) ::
       Interaction("u5", "i2", weightsMap("hover"), System.currentTimeMillis / 1000) ::
       Interaction("u5", "i4", weightsMap("buy"), System.currentTimeMillis / 1000) ::
-      Nil
+        Interaction("u1", "i1", weightsMap("buy"), System.currentTimeMillis / 1000) ::
+        Interaction("u1", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u1", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i3", weightsMap("buy"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i5", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u3", "i1", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u3", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
+    Interaction("u2", "i2", weightsMap("share"), System.currentTimeMillis / 1000) ::
+        Interaction("u2", "i3", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u2", "i5", weightsMap("hover"), System.currentTimeMillis / 1000) ::
+    Nil
+     */
+
+    val events =
+      Interaction("u1", "i1", weightsMap("buy"), System.currentTimeMillis / 1000) ::
+        Interaction("u1", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u1", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u2", "i2", weightsMap("share"), System.currentTimeMillis / 1000) ::
+        Interaction("u2", "i3", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u2", "i5", weightsMap("hover"), System.currentTimeMillis / 1000) ::
+        Interaction("u3", "i1", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u3", "i4", weightsMap("click"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i2", weightsMap("like"), System.currentTimeMillis / 1000) ::
+        Interaction("u5", "i1", weightsMap("share"), System.currentTimeMillis / 1000) ::
+        Interaction("u5", "i2", weightsMap("hover"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i3", weightsMap("buy"), System.currentTimeMillis / 1000) ::
+        Interaction("u4", "i5", weightsMap("click"), System.currentTimeMillis / 1000) ::
+      Interaction("u5", "i4", weightsMap("buy"), System.currentTimeMillis / 1000) ::
+    Nil
 
     for (event <- events) {
-      Await.ready(recommender.learn(event), 5.seconds)
+      Await.ready(recommender.learn(event), 500000.seconds)
     }
-
+//    recommender.learn(events)
   }
 
   def afterAll(): Unit = {
-    Await.ready(testDb.truncateAsync(), 10.seconds)
-    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+//    Await.ready(testDb.truncateAsync(), 10.seconds)
+//    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
   }
 
 

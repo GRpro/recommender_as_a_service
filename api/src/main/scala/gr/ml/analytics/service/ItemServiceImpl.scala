@@ -60,6 +60,8 @@ class ItemServiceImpl(val inputDatabase: CassandraStorage) extends ItemService w
         // TODO implement proper mechanism to escape characters which have special meaning for Cassandra
         val json = JSONObject(item).toString().replace("'", "")
         val tableName = Util.itemsTableName(schemaId)
+
+        println(json)
         val query = s"INSERT INTO ${inputDatabase.ratingModel.keySpace}.$tableName JSON '$json'"
         val res = inputDatabase.connector.session.execute(query).wasApplied()
 
