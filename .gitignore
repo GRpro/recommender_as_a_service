@@ -6,3 +6,5 @@
 **/*.class
 *.iml
 logs
+**/test_dataset
+spark-warehouse

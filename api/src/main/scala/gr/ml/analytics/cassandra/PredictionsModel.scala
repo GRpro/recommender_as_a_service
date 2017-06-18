@@ -3,9 +3,10 @@ package gr.ml.analytics.cassandra
 
 import com.outworkers.phantom.CassandraTable
 import com.outworkers.phantom.dsl._
-import gr.ml.analytics.domain.Recommendation
 
 import scala.concurrent.Future
+
+case class Recommendation(userId: Int, topItems: List[Int])
 
 /**
   * Cassandra representation of the Ratings table

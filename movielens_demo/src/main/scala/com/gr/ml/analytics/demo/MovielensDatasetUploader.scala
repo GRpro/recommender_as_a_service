@@ -13,7 +13,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.parsing.json.{JSONArray, JSONObject}
+import scala.util.parsing.json.{JSON, JSONArray, JSONObject}
 import scala.util.{Failure, Success}
 
 
@@ -24,20 +24,32 @@ import scala.util.{Failure, Success}
   *
   * See https://grouplens.org/datasets/movielens
   */
-object DatasetUploader extends App with Constants with LazyLogging {
+object MovielensDatasetUploader extends App with Constants with LazyLogging {
 
   Util.loadAndUnzip()     // TODO it should perform feature generation too!
 
+  val ratingMapping = Map(
+    0.5 -> 1,
+    1 -> 2,
+    1.5 -> 3,
+    2 -> 4,
+    2.5 -> 5,
+    3 -> 6,
+    3.5 -> 7,
+    4 -> 8,
+    4.5 -> 9,
+    5 -> 10
+  )
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
   val config: Config = ConfigFactory.load("application.conf")
 
-  val schemasREST = config.getString("service.schemas.rest")
-  val itemsREST = config.getString("service.items.rest")
-  val ratingsREST = config.getString("service.ratings.rest")
+  val serviceREST = config.getString("service.rest")
 
+
+  def escapedFeatureName(featureName: String): String = featureName.toLowerCase.replaceAll("[^a-zA-Z]", "")
 
   val featureNames = CSVReader.open(moviesWithFeaturesPath).readNext().get.drop(1)
   val featureNumbers = featureNames.indices.toList
@@ -49,7 +61,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
     *
     * @return the id of created schema
     */
-  def postSchema(): Int = {
+  def postSchema(): String = {
 
     // the first column is itemId
     val numFeatures = CSVReader.open(moviesWithFeaturesPath).readNext().get.length - 1
@@ -58,48 +70,49 @@ object DatasetUploader extends App with Constants with LazyLogging {
         "name" -> "movieid",
         "type" -> "int"
       )),
-      "features" -> JSONArray((0 until numFeatures).map(n =>
+      "features" -> JSONArray(featureNames.map(featureName =>
         JSONObject(Map(
-          "name" -> ("f" + n.toString),
+          "name" -> escapedFeatureName(featureName),
           "type" -> "double"
         ))
-      ).toList
+      )
     )))
 
     val future = Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
-      uri = s"$schemasREST/schemas",
+      uri = s"$serviceREST/schemas",
       entity = HttpEntity(ContentTypes.`application/json`, schema.toString())))
 
     future.onFailure { case e => e.printStackTrace() }
     Await.ready(future, 10.seconds)
     future.value.get match {
       case Success(response) =>
-        // TODO more elegant way to get Int value from response?
-        response.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8).toInt
+
+        def convertJson(schemaString: String): Map[String, Any] = {
+          val json = JSON.parseFull(schemaString)
+          json match {
+            case Some(schema: Map[String, Any]) => schema
+            case None => throw new RuntimeException("item validation error")
+          }
+        }
+
+        val responseString = response.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8).toString
+        convertJson(responseString)("id").toString
       case Failure(ex) => throw ex
     }
   }
 
-//  case class Movie(movieId: Int, title: String, genres: String)
-
-  def uploadMovies(schemaId: Int): Unit = {
+  def uploadMovies(schemaId: String): Unit = {
 
     val reader = CSVReader.open(moviesWithFeaturesPath)
 
     val allItems = reader.toStreamWithHeaders.map(map => {
-//      val itemMap = Map("itemId" -> map("itemId").toInt)
       val fMap: Map[String, Any] = featuresMap.map(
-        // TODO the 'f' is appendet
-        entry => ("f" + entry._1.toString, map(entry._2).toDouble)
+        entry => (escapedFeatureName(entry._2.toString), map(entry._2).toDouble)
       ) + ("movieid" -> map("itemId").toInt)
       JSONObject(fMap)
     }).toList
 
-
-
-
-    // TODO BUG - not all movies are being uploaded, only 9025
     def postItem(movieList: List[JSONObject]): Future[HttpResponse] = {
 
       def toJson(movieList: List[JSONObject]): String = {
@@ -108,7 +121,7 @@ object DatasetUploader extends App with Constants with LazyLogging {
 
       val future = Http().singleRequest(HttpRequest(
         method = HttpMethods.POST,
-        uri = s"$itemsREST/schemas/$schemaId/items",
+        uri = s"$serviceREST/schemas/$schemaId/items",
         entity = HttpEntity(ContentTypes.`application/json`, toJson(movieList))))
 
       future.onFailure { case e => e.printStackTrace() }
@@ -116,13 +129,15 @@ object DatasetUploader extends App with Constants with LazyLogging {
     }
 
     // every request will contain 1000 movies
-    val groupedMovies: List[List[JSONObject]] = allItems.grouped(1000).toList
+    val groupedMovies: List[List[JSONObject]] = allItems.grouped(500).toList
 
     groupedMovies.foreach(movies => {
       val future = postItem(movies)
       Await.ready(future, 30.seconds)
       println(future.value.get)
+      Thread.sleep(2000)
     })
+
   }
 
   case class Rating(userId: Int, itemId: Int, rating: Double, timestamp: Long)
@@ -137,13 +152,13 @@ object DatasetUploader extends App with Constants with LazyLogging {
         JSONArray(ratingList.map(rating => JSONObject(Map(
           "userId" -> rating.userId,
           "itemId" -> rating.itemId,
-          "rating" -> rating.rating,
-          "timestamp" -> rating.timestamp)))).toString()
+          "rating" -> rating.rating/*,
+          "timestamp" -> rating.timestamp*/)))).toString()
       }
 
       val future = Http().singleRequest(HttpRequest(
         method = HttpMethods.POST,
-        uri = s"$ratingsREST/ratings",
+        uri = s"$serviceREST/ratings",
         entity = HttpEntity(ContentTypes.`application/json`, toJson(ratingList))))
 
       future.onFailure { case e => e.printStackTrace() }
@@ -168,11 +183,13 @@ object DatasetUploader extends App with Constants with LazyLogging {
       println(future.value.get)
     })
 
+
+
   }
 
   logger.info("Creating schema")
-  val schemaId = postSchema()
 
+  val schemaId = postSchema()
   logger.info("Uploading items corresponding to schema")
   uploadMovies(schemaId)
 

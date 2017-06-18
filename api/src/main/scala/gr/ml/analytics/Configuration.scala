@@ -7,20 +7,15 @@ object Configuration {
 
   val config: Config = ConfigFactory.load("application.conf")
 
-  val serviceItemsListenerInterface: String = config.getString("service.items.listener.iface")
-  val serviceItemsListenerPort: Int = config.getInt("service.items.listener.port")
+  val serviceListenerInterface: String = config.getString("service.listener.iface")
+  val serviceListenerPort: Int = config.getInt("service.listener.port")
 
-  val serviceRecommenderListenerInterface: String = config.getString("service.recommender.listener.iface")
-  val serviceRecommenderListenerPort: Int = config.getInt("service.recommender.listener.port")
+  val swaggerRestHost: String = config.getString("swagger.rest.host")
+  val swaggerRestPort: Int = config.getInt("swagger.rest.port")
 
-  val serviceSchemasListenerInterface: String = config.getString("service.schemas.listener.iface")
-  val serviceSchemasListenerPort: Int = config.getInt("service.schemas.listener.port")
-  val serviceSchemasClientURI: String = config.getString("service.schemas.rest")
+  val onlineLearningEnable: Boolean = config.getBoolean("online.learning.enable")
 
-  val serviceRatingsListenerInterface: String = config.getString("service.ratings.listener.iface")
-  val serviceRatingsListenerPort: Int = config.getInt("service.ratings.listener.port")
-
-  val cassandraHosts: List[String] = config.getStringList("cassandra.host").toList
+  val cassandraHosts: List[String] = config.getStringList("cassandra.hosts").toList
   val cassandraKeyspace: String = config.getString("cassandra.keyspace")
   val cassandraUsername: String = config.getString("cassandra.username")
   val cassandraPassword: String = config.getString("cassandra.password")

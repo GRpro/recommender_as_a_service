@@ -1,10 +1,9 @@
 package gr.ml.analytics.service
 
 import com.typesafe.scalalogging.LazyLogging
-import gr.ml.analytics.cassandra.InputDatabase
-import gr.ml.analytics.domain.Rating
+import gr.ml.analytics.cassandra.{CassandraStorage, Rating}
 
-class RatingServiceImpl(inputDatabase: InputDatabase) extends RatingService with LazyLogging {
+class RatingServiceImpl(inputDatabase: CassandraStorage) extends RatingService with LazyLogging {
 
   private lazy val ratingModel = inputDatabase.ratingModel
 

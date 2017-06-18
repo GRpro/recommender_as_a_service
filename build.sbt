@@ -1,4 +1,5 @@
 import sbt.Keys.{libraryDependencies, _}
+import sbt.Resolver
 
 val commonSettings = Seq(
   organization := "gr.ml.analytics",
@@ -33,7 +34,7 @@ val buildInfoSettings = Seq(
 
 val akkaVersion = "2.4.17"
 val akkaHttpVersion = "10.0.5"
-val phantomVersion = "2.1.3"
+val phantomVersion = "2.7.5"
 val sparkVersion = "2.0.1"
 
 // module structure configuration
@@ -69,7 +70,9 @@ lazy val api = project.in(file("api"))
     description :=
       """
         |REST API for recommender as a service software
-      """.stripMargin
+      """.stripMargin,
+    mainClass in assembly := Some("gr.ml.analytics.Application"),
+    assemblyJarName in assembly := "api.jar"
   )
   .settings(
 
@@ -82,15 +85,26 @@ lazy val api = project.in(file("api"))
       "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+      "ch.megard" %% "akka-http-cors" % "0.1.11",
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test"
     ),
+    // swagger support
+    libraryDependencies += "co.pragmati" %% "swagger-ui-akka-http" % "1.0.0",
+//    libraryDependencies += "io.swagger" % "swagger-jaxrs" % "1.5.13",
+    libraryDependencies += "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.9.1",
+    libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.14.0",
     libraryDependencies += "com.outworkers" %% "phantom-dsl" % phantomVersion,
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.0",
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",
-    libraryDependencies += "org.specs2" %% "specs2" % "2.3.13" % "test",
+    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4",
+    libraryDependencies += "org.json4s" % "json4s-jackson_2.11" % "3.5.1",
+
+    libraryDependencies += "org.cassandraunit" % "cassandra-unit" % "3.1.3.2" % "test",
+
+    libraryDependencies += "com.outworkers" %% "util-testing" % "0.30.1" % "test",
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test",
-    libraryDependencies += "net.debasishg" %% "redisclient" % "3.4"
+    libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.9" % "test"
   )
   .dependsOn(common)
 
@@ -102,7 +116,9 @@ lazy val service = project.in(file("service"))
     description :=
       """
         |Recommender service where all magic happens
-      """.stripMargin
+      """.stripMargin,
+    mainClass in assembly := Some("gr.ml.analytics.LocalRunner"),
+    assemblyJarName in assembly := "batch.jar"
   )
   .settings(
     resolvers ++= Seq(
