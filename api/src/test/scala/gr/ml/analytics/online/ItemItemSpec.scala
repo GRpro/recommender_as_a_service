@@ -18,12 +18,12 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
 
   type EE = ExecutionEnv
 
-//  EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, 20000L)
-//
-//  val port = EmbeddedCassandraServerHelper.getNativeTransportPort
-//  val host = EmbeddedCassandraServerHelper.getHost
+  EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, 20000L)
 
-  lazy val connector: CassandraConnection = ContactPoints(Seq("localhost"), 9042).keySpace("cassandra_test")
+  val port = EmbeddedCassandraServerHelper.getNativeTransportPort
+  val host = EmbeddedCassandraServerHelper.getHost
+
+  lazy val connector: CassandraConnection = ContactPoints(Seq(host), port).keySpace("cassandra_test")
 
   object TestDb extends OnlineCassandraStorage(connector)
 
@@ -90,8 +90,8 @@ class ItemItemSpec extends Specification with BeforeAfterAll {
   }
 
   def afterAll(): Unit = {
-//    Await.ready(testDb.truncateAsync(), 10.seconds)
-//    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    Await.ready(testDb.truncateAsync(), 10.seconds)
+    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
   }
 
 

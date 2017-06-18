@@ -13,7 +13,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.parsing.json.{JSONArray, JSONObject}
+import scala.util.parsing.json.{JSON, JSONArray, JSONObject}
 import scala.util.{Failure, Success}
 
 
@@ -61,7 +61,7 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
     *
     * @return the id of created schema
     */
-  def postSchema(): Int = {
+  def postSchema(): String = {
 
     // the first column is itemId
     val numFeatures = CSVReader.open(moviesWithFeaturesPath).readNext().get.length - 1
@@ -87,13 +87,22 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
     Await.ready(future, 10.seconds)
     future.value.get match {
       case Success(response) =>
-        // TODO more elegant way to get Int value from response?
-        response.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8).toInt
+
+        def convertJson(schemaString: String): Map[String, Any] = {
+          val json = JSON.parseFull(schemaString)
+          json match {
+            case Some(schema: Map[String, Any]) => schema
+            case None => throw new RuntimeException("item validation error")
+          }
+        }
+
+        val responseString = response.entity.asInstanceOf[HttpEntity.Strict].getData().decodeString(ByteString.UTF_8).toString
+        convertJson(responseString)("id").toString
       case Failure(ex) => throw ex
     }
   }
 
-  def uploadMovies(schemaId: Int): Unit = {
+  def uploadMovies(schemaId: String): Unit = {
 
     val reader = CSVReader.open(moviesWithFeaturesPath)
 
@@ -166,13 +175,12 @@ object MovielensDatasetUploader extends App with Constants with LazyLogging {
     }).toList
 
     // every request will contain 1000 ratings
-    val groupedMovies: List[List[Rating]] = allRatings.grouped(500).toList
+    val groupedMovies: List[List[Rating]] = allRatings.grouped(1000).toList
 
     groupedMovies.foreach(ratings => {
       val future = postRating(ratings)
       Await.ready(future, 30.seconds)
       println(future.value.get)
-      Thread.sleep(2000)
     })
 
 

@@ -1,5 +1,6 @@
 package gr.ml.analytics.service
 
+import java.util.UUID
 import com.typesafe.scalalogging.LazyLogging
 import gr.ml.analytics.cassandra.{CassandraStorage, Schema}
 
@@ -12,7 +13,7 @@ class ItemServiceImpl(val inputDatabase: CassandraStorage) extends ItemService w
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemId: Int): Future[Option[Map[String, Any]]] = {
+  override def get(schemaId: UUID, itemId: Int): Future[Option[Map[String, Any]]] = {
     val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
     schemaFuture.map {
@@ -40,14 +41,14 @@ class ItemServiceImpl(val inputDatabase: CassandraStorage) extends ItemService w
   /**
     * @inheritdoc
     */
-  override def get(schemaId: Int, itemIds: List[Int]): Future[List[Option[Map[String, Any]]]] = {
+  override def get(schemaId: UUID, itemIds: List[Int]): Future[List[Option[Map[String, Any]]]] = {
     Future.sequence(itemIds.map(itemId => get(schemaId, itemId)))
   }
 
   /**
     * @inheritdoc
     */
-  override def save(schemaId: Int, item: Map[String, Any]): Future[Option[Int]] = {
+  override def save(schemaId: UUID, item: Map[String, Any]): Future[Option[Int]] = {
     val schemaFuture = inputDatabase.schemasModel.getOne(schemaId)
 
     schemaFuture.map {
